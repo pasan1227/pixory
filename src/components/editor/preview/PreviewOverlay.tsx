@@ -1,6 +1,7 @@
 "use client";
 
 import { X } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useMemo, useRef } from "react";
 import { PreviewChecklistPanel } from "@/components/editor/preview/PreviewChecklistPanel";
 import { PreviewNav } from "@/components/editor/preview/PreviewNav";
@@ -25,6 +26,8 @@ type PreviewOverlayProps = Readonly<{
   photosById: Record<string, PhotoDto>;
   onClose: () => void;
   onFixIssue: (issue: CompletenessIssue) => void;
+  // When set, the preview chrome shows a prominent Order CTA linking here.
+  checkoutHref?: string;
 }>;
 
 export default function PreviewOverlay({
@@ -34,6 +37,7 @@ export default function PreviewOverlay({
   photosById,
   onClose,
   onFixIssue,
+  checkoutHref,
 }: PreviewOverlayProps) {
   const total = doc.spreads.length + 1;
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -75,7 +79,15 @@ export default function PreviewOverlay({
       tabIndex={-1}
       className="fixed inset-0 z-50 flex flex-col bg-ink/95 text-paper outline-none"
     >
-      <header className="flex shrink-0 items-center justify-end px-2 py-1">
+      <header className="flex shrink-0 items-center justify-end gap-2 px-2 py-1">
+        {checkoutHref && (
+          <Link
+            href={checkoutHref}
+            className="inline-flex min-h-11 items-center rounded-full bg-terracotta px-6 font-medium text-paper transition-colors duration-150 motion-reduce:transition-none hover:bg-terracotta-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta focus-visible:ring-offset-2 focus-visible:ring-offset-ink"
+          >
+            {en.checkout.title}
+          </Link>
+        )}
         <button
           type="button"
           onClick={onClose}

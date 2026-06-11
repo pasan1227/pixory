@@ -77,6 +77,18 @@ export async function findOwnedPhoto(
   });
 }
 
+// ---- Admin scope (no session check: callers must requireAdmin()) ----
+// Admin order previews and the zip export need a book's photos regardless of
+// which anonymous session owns it.
+export async function adminListPhotosByBook(
+  bookId: string,
+): Promise<PhotoRecord[]> {
+  return prisma.photo.findMany({
+    where: { bookId },
+    orderBy: [{ capturedAt: { sort: "asc", nulls: "last" } }, { createdAt: "asc" }],
+  });
+}
+
 // Deletes and returns the record so the caller can clean up storage keys.
 export async function deletePhoto(
   photoId: string,
@@ -84,6 +96,11 @@ export async function deletePhoto(
 ): Promise<PhotoRecord | null> {
   const photo = await findOwnedPhoto(photoId, sessionToken);
   if (!photo) return null;
+  // Refused once the book has orders: the order snapshot references these
+  // photo ids and the admin preview/zip need the binaries intact (CLAUDE.md
+  // invariant 2 — editing a book after ordering never affects the order).
+  const orders = await prisma.order.count({ where: { bookId: photo.bookId } });
+  if (orders > 0) return null;
   await prisma.photo.delete({ where: { id: photo.id } });
   return photo;
 }

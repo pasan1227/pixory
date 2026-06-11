@@ -375,6 +375,7 @@ function EditorChrome({
           photosById={photosById}
           onClose={closePreview}
           onFixIssue={handleFixIssue}
+          checkoutHref={`/checkout/${bookId}`}
         />
       )}
     </div>

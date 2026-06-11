@@ -106,5 +106,9 @@ locales · automated print-PDF generation.
    with framer page-turn (lazy chunk, reduced-motion aware) and a
    completeness checklist (jump/fix), checkCompleteness lib feeding the
    M6 checkout gate
-6. ⬜ Checkout, orders, snapshotting, admin
+6. ✅ Checkout with server-revalidated gate (blockers, per-slot "leave
+   blank" confirmations, COD-Colombo rule), orders snapshot the document
+   (photo deletion locked once ordered), PB- references, console Notifier
+   seam, print-PDF stub w/ design notes, basic-auth admin (orders table,
+   frozen-snapshot detail, status flow, streamed photo zip)
 7. ⬜ Marketing site, SEO, polish
