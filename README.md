@@ -89,7 +89,9 @@ locales · automated print-PDF generation.
 
 1. ✅ Scaffold, Prisma schema, document model, layouts/print specs, pure
    helpers (crop, DPI, remap, pricing, distribution, phone) with tests
-2. ⬜ Photo upload pipeline + storage adapter + tray
+2. ✅ Photo upload pipeline (two-stage preview/original, concurrency 3,
+   retry), StorageAdapter + local impl + authenticated serving route,
+   anonymous sessions, repositories, photo tray
 3. ⬜ Editor core (canvas, layout switching, slots, undo/redo, autosave)
 4. ⬜ Cover step, /create flow, anonymous sessions, my-books/resume
 5. ⬜ Auto-create, preview mode, completeness checks

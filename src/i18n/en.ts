@@ -59,6 +59,38 @@ export const en = {
     warning: "May print blurry",
     blocked: "Too low resolution to print",
   },
+  create: {
+    title: "Start your book",
+    subtitle: "Pick a format — you can add photos and change everything later.",
+    cta: "Create this book",
+  },
+  editor: {
+    untitled: "Untitled book",
+  },
+  tray: {
+    title: "Your photos",
+    empty: "No photos yet — add some to get started.",
+    addPhotos: "Add photos",
+    dropHint: "Drag photos here or tap to choose",
+    uploading: "Uploading…",
+    processing: "Preparing…",
+    savingOriginal: "Saving full quality…",
+    failed: "Upload failed",
+    retry: "Retry",
+    dismiss: "Dismiss",
+    remove: "Remove",
+    usedOnce: "Used once",
+    usedTimes: "Used {count}×",
+    errors: {
+      not_found: "This book is no longer available.",
+      invalid_input: "Something went wrong with this photo.",
+      file_missing: "The file could not be read.",
+      file_too_large: "This photo is too large to upload.",
+      unsupported_type: "Only JPEG and PNG photos are supported.",
+      heic_unsupported:
+        "iPhone HEIC photos aren't supported yet — please convert to JPEG and try again.",
+    },
+  },
   pricing: {
     freeDelivery: "Free delivery",
     deliveryAtCheckout: "Delivery calculated at checkout",
