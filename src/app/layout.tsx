@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Fraunces, Inter } from "next/font/google";
+import { images } from "@/data/images";
+import { BRAND_NAME } from "@/data/site";
 import { en } from "@/i18n/en";
+import { siteUrl } from "@/lib/seo";
 import "./globals.css";
 
 const fraunces = Fraunces({
@@ -15,8 +18,18 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: en.meta.defaultTitle,
+  metadataBase: new URL(siteUrl()),
+  title: {
+    default: en.meta.defaultTitle,
+    template: `%s — ${BRAND_NAME}`,
+  },
   description: en.meta.defaultDescription,
+  openGraph: {
+    siteName: BRAND_NAME,
+    images: [images.og],
+    type: "website",
+    locale: "en_LK",
+  },
 };
 
 export default function RootLayout({

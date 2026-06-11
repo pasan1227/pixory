@@ -111,4 +111,9 @@ locales · automated print-PDF generation.
    (photo deletion locked once ordered), PB- references, console Notifier
    seam, print-PDF stub w/ design notes, basic-auth admin (orders table,
    frozen-snapshot detail, status flow, streamed photo zip)
-7. ⬜ Marketing site, SEO, polish
+7. ✅ Marketing site: conversion home (hero, trust bar, SL occasion grid,
+   how-it-works, pricing, 5 testimonials, no-JS FAQ accordion + FAQPage
+   JSON-LD), 6 static /occasions/[slug] SEO landers, about/contact/
+   delivery-and-payments/privacy/terms, announcement bar, context-aware
+   WhatsApp float, sitemap + robots — Lighthouse mobile 95/100/100
+   (budgets: ≥90/≥95/≥95)

@@ -322,4 +322,180 @@ export const en = {
     freeDelivery: "Free delivery",
     deliveryAtCheckout: "Delivery calculated at checkout",
   },
+  marketing: {
+    announcement:
+      "Free island-wide delivery over {threshold} · Printed in Colombo, delivered in 4–6 days",
+    nav: {
+      home: "Home",
+      pricing: "Pricing",
+      occasions: "Occasions",
+      about: "About",
+      contact: "Contact",
+      myBooks: "My books",
+      cta: "Create your book",
+    },
+    hero: {
+      title: "Your photos deserve better than a camera roll",
+      subtitle:
+        "Design a beautiful printed photobook in minutes — right from your phone. We print it in Colombo and deliver it to your door, anywhere in Sri Lanka.",
+      ctaPrimary: "Create your book",
+      ctaSecondary: "See pricing",
+      imageAlt: "An open photobook with family photographs",
+    },
+    trust: {
+      printed: "Printed in Colombo",
+      cod: "Cash on delivery",
+      delivery: "Island-wide delivery",
+    },
+    occasions: {
+      title: "A book for every story",
+      subtitle: "Start from the moment you want to remember.",
+      cta: "Start this book",
+    },
+    how: {
+      title: "How it works",
+      steps: [
+        {
+          title: "Create online",
+          body: "Upload your photos and design every page — no app to install, works on your phone.",
+        },
+        {
+          title: "Approve your proof",
+          body: "We send a digital proof on WhatsApp and only print once you're happy.",
+        },
+        {
+          title: "We print in Colombo",
+          body: "Thick matte pages, rich colour, a cover that feels as good as it looks.",
+        },
+        {
+          title: "Delivered in 4–6 days",
+          body: "Cash on delivery in Colombo & suburbs, courier island-wide.",
+        },
+      ],
+    },
+    pricingSection: {
+      title: "Simple, honest pricing",
+      subtitle:
+        "Every book starts with 20 pages. Add as many as you like — up to {max}.",
+      from: "From {price}",
+      extraPage: "{price} per extra page",
+      pagesIncluded: "{count} pages included",
+      freeDeliveryNote: "Free delivery on orders over {threshold}.",
+      cta: "Start your book",
+    },
+    testimonials: {
+      title: "Loved across the island",
+    },
+    faq: {
+      title: "Questions, answered",
+      items: [
+        {
+          q: "How long does delivery take?",
+          a: "4–6 working days after you approve your digital proof. Colombo orders often arrive sooner.",
+        },
+        {
+          q: "Can I pay cash on delivery?",
+          a: "Yes — cash on delivery is available in Colombo and suburbs. Island-wide we offer bank transfer, with card payments coming soon.",
+        },
+        {
+          q: "Will my phone photos print well?",
+          a: "Almost always. The editor checks every photo's print resolution as you go and warns you before anything would print blurry.",
+        },
+        {
+          q: "What sizes do you offer?",
+          a: "Square 20×20 cm, square 26×26 cm and landscape A4 — all hardcover, from 20 to 100 pages.",
+        },
+        {
+          q: "Can I start on my phone and finish on my laptop?",
+          a: "Yes. Your book saves automatically, and you can WhatsApp yourself a resume link from My books to continue on any device.",
+        },
+        {
+          q: "Do you check my book before printing?",
+          a: "Every order gets a digital proof on WhatsApp. We only print after you approve it.",
+        },
+        {
+          q: "What if my book arrives damaged?",
+          a: "We'll reprint and redeliver it free. Message us on WhatsApp within 7 days of delivery.",
+        },
+      ],
+    },
+    footer: {
+      blurb:
+        "Premium photobooks designed online, printed in Colombo and delivered across Sri Lanka.",
+      explore: "Explore",
+      support: "Support",
+      legal: "Legal",
+      deliveryAndPayments: "Delivery & payments",
+      privacy: "Privacy policy",
+      terms: "Terms of service",
+      rights: "All rights reserved.",
+    },
+    whatsapp: {
+      label: "Chat on WhatsApp",
+      defaultPrefill: "Hi! I have a question about Pixela photobooks.",
+      occasionPrefill: "Hi! I'd like to make a {occasion} photobook.",
+    },
+    about: {
+      metaTitle: "About",
+      title: "Made in Colombo, for Sri Lankan stories",
+      body1:
+        "Pixela started with a simple frustration: thousands of beautiful photos living and dying on our phones. Weddings, homecomings, first birthdays, trips down south — moments worth more than a scroll.",
+      body2:
+        "So we built a photobook studio that works the way Sri Lanka works: design on your phone, pay cash on delivery if you like, and talk to a real person on WhatsApp at every step.",
+      body3:
+        "Every book is printed and hand-checked in our Colombo studio, then couriered to any of the 25 districts. We'd love to print yours.",
+    },
+    contact: {
+      metaTitle: "Contact",
+      title: "Talk to us",
+      body: "Questions about an order, bulk printing, or anything else — we answer fast on WhatsApp.",
+      whatsappTitle: "WhatsApp",
+      whatsappBody: "The quickest way to reach us, 9am–9pm every day.",
+      emailTitle: "Email",
+      email: "hello@pixela.lk",
+      hoursTitle: "Studio hours",
+      hours: "Monday–Saturday, 9am–6pm",
+    },
+    deliveryPage: {
+      metaTitle: "Delivery & payments",
+      title: "Delivery & payments",
+      deliveryTitle: "Delivery",
+      deliveryBody:
+        "Books are printed within 2–3 working days of proof approval, then delivered by courier.",
+      zoneColombo: "Colombo & suburbs: {price} — or free over {threshold}",
+      zoneIsland: "Everywhere else in Sri Lanka: {price} — or free over {threshold}",
+      paymentsTitle: "Payments",
+      payCod: "Cash on delivery — Colombo & suburbs.",
+      payBank:
+        "Bank transfer — we WhatsApp you our account details with your proof; printing starts once the transfer clears.",
+      payCard: "Card payments via PayHere are coming soon.",
+      proofTitle: "Digital proof",
+      proofBody:
+        "Every order receives a WhatsApp proof of the full book. Nothing prints until you approve it.",
+    },
+    privacy: {
+      metaTitle: "Privacy policy",
+      title: "Privacy policy",
+      body1:
+        "Your photos are yours. We store them only to print your book, we never share or sell them, and we never use them for marketing without your written permission.",
+      body2:
+        "We collect only what an order needs: your name, phone number, delivery address and optionally an email. Books you design are private to your device session unless you share a resume link.",
+      body3:
+        "Photos and book data for undelivered projects are kept so you can finish them. You can delete a book (and all its photos) from My books at any time, unless it has a placed order we still need to print.",
+      body4:
+        "Questions or deletion requests: message us on WhatsApp or email hello@pixela.lk.",
+    },
+    terms: {
+      metaTitle: "Terms of service",
+      title: "Terms of service",
+      body1:
+        "Prices shown at checkout are final and include printing; delivery is charged as displayed unless your order qualifies for free delivery.",
+      body2:
+        "You confirm you own or have permission to print the photos you upload. We refuse material that is unlawful or infringes others' rights.",
+      body3:
+        "Because every book is custom-printed, orders can't be cancelled once you approve the digital proof. If a book arrives damaged or misprinted, we reprint and redeliver free of charge — contact us within 7 days.",
+      body4:
+        "Colour on screen and in print can differ slightly; we calibrate carefully, and the digital proof is the reference you approve.",
+    },
+  },
 } as const;
