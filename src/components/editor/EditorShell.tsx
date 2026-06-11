@@ -14,6 +14,7 @@ import { EditorHeader } from "@/components/editor/EditorHeader";
 import { Filmstrip } from "@/components/editor/Filmstrip";
 import { PhotoPickerSheet } from "@/components/editor/PhotoPickerSheet";
 import { PhotoTray } from "@/components/editor/PhotoTray";
+import type { PickTarget } from "@/components/editor/pick-target";
 import { SpreadCanvas } from "@/components/editor/SpreadCanvas";
 import { useAutosave } from "@/components/editor/useAutosave";
 import { useUploadManager } from "@/components/editor/useUploadManager";
@@ -23,8 +24,6 @@ import type { PriceBreakdown } from "@/lib/pricing";
 import type { PhotoDto } from "@/lib/schemas/photo";
 import { EditorStoreProvider, useEditorStore } from "@/stores/editor-store";
 import type { BookDocument } from "@/types/book";
-
-type PickTarget = { spreadIndex: number; slotIndex: number };
 
 // Bottom drawer for mobile (<lg). Stays mounted so the 150ms slide can play;
 // the closed state is `inert`, removing it from the tab order and the
@@ -42,8 +41,11 @@ function MobileSheet({
 }>) {
   const dialogRef = useRef<HTMLDivElement>(null);
 
-  // Escape closes; focus moves into the dialog on open (same pattern as
-  // PhotoPickerSheet). Listener exists only while the sheet is open.
+  // Escape closes; focus moves into the dialog on open. Listener exists only
+  // while the sheet is open. Bubble phase on purpose: when the photo picker
+  // is stacked on top, its CAPTURE-phase window listener consumes Escape
+  // (stopPropagation) before any bubble listener runs, so this handler never
+  // double-closes — no visible-modal-on-top check is needed here.
   useEffect(() => {
     if (!open) return;
     dialogRef.current?.focus();
@@ -130,6 +132,7 @@ function EditorChrome({
   const slotIndex = useEditorStore((s) => s.selection.slotIndex);
   const selectSlot = useEditorStore((s) => s.selectSlot);
   const placePhoto = useEditorStore((s) => s.placePhoto);
+  const placeCoverPhoto = useEditorStore((s) => s.placeCoverPhoto);
   const { status } = useAutosave({ bookId, initialUpdatedAt: updatedAt });
 
   const [pickTarget, setPickTarget] = useState<PickTarget | null>(null);
@@ -144,12 +147,12 @@ function EditorChrome({
 
   // Selecting a slot on mobile auto-opens the panel sheet (it is only
   // rendered <lg; both close paths clear the selection again, so the derived
-  // value drops back to false).
+  // value drops back to false). selection.slotIndex is shared by the cover
+  // and spread views, so cover slot selection auto-opens the sheet too.
   const panelSheetOpen = panelOpen || slotIndex !== null;
 
   const requestPhotoPick = useCallback(
-    (spreadIndex: number, slot: number) =>
-      setPickTarget({ spreadIndex, slotIndex: slot }),
+    (target: PickTarget) => setPickTarget(target),
     [],
   );
   const closePanel = useCallback(() => {
@@ -160,7 +163,9 @@ function EditorChrome({
   // every render while the sheet is open.
   const closeTray = useCallback(() => setTrayOpen(false), []);
   const handlePick = (photoId: string) => {
-    if (pickTarget) {
+    if (pickTarget?.view === "cover") {
+      placeCoverPhoto(pickTarget.slotIndex, photoId);
+    } else if (pickTarget) {
       placePhoto(pickTarget.spreadIndex, pickTarget.slotIndex, photoId);
     }
     setPickTarget(null);

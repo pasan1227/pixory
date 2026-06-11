@@ -30,9 +30,10 @@ function slotAt(doc: BookDocument, spread: number, slot: number): SlotContent {
 }
 
 describe("editor store basics", () => {
-  it("selection defaults to { spreadIndex: 0, slotIndex: null }", () => {
+  it("selection defaults to { view: 'spread', spreadIndex: 0, slotIndex: null }", () => {
     const store = makeStore();
     expect(store.getState().selection).toEqual({
+      view: "spread",
       spreadIndex: 0,
       slotIndex: null,
     });
@@ -108,6 +109,7 @@ describe("history discipline", () => {
     store.temporal.getState().undo();
 
     expect(store.getState().selection).toEqual({
+      view: "spread",
       spreadIndex: 2,
       slotIndex: 1,
     });
@@ -136,6 +138,7 @@ describe("selection side effects of document ops", () => {
 
     expect(store.getState().document.spreads).toHaveLength(10);
     expect(store.getState().selection).toEqual({
+      view: "spread",
       spreadIndex: 9,
       slotIndex: null,
     });
@@ -167,6 +170,7 @@ describe("selection side effects of document ops", () => {
 
     expect(store.getState().document.spreads).toHaveLength(11);
     expect(store.getState().selection).toEqual({
+      view: "spread",
       spreadIndex: 1,
       slotIndex: null,
     });
@@ -240,5 +244,151 @@ describe("setCrop undo/redo flow", () => {
 
     expect(store.getState().document).toBe(placed);
     expect(store.temporal.getState().pastStates).toHaveLength(1);
+  });
+});
+
+describe("cover selection", () => {
+  it("selectCover sets view 'cover', clears slotIndex, keeps spreadIndex, no history", () => {
+    const store = makeStore();
+    store.getState().selectSpread(3);
+    store.getState().selectSlot(1);
+
+    store.getState().selectCover();
+
+    expect(store.getState().selection).toEqual({
+      view: "cover",
+      spreadIndex: 3,
+      slotIndex: null,
+    });
+    expect(store.temporal.getState().pastStates).toHaveLength(0);
+  });
+
+  it("selectSpread flips back to view 'spread' after selectCover", () => {
+    const store = makeStore();
+    store.getState().selectCover();
+
+    store.getState().selectSpread(2);
+
+    expect(store.getState().selection).toEqual({
+      view: "spread",
+      spreadIndex: 2,
+      slotIndex: null,
+    });
+  });
+});
+
+describe("cover history discipline", () => {
+  it("each document-changing cover action pushes exactly ONE history entry", () => {
+    const store = makeStore();
+    const past = () => store.temporal.getState().pastStates.length;
+
+    store.getState().updateCoverStyle({ title: "Our Trip" });
+    expect(past()).toBe(1);
+
+    store.getState().switchCoverLayout("cover-full");
+    expect(past()).toBe(2);
+
+    store.getState().placeCoverPhoto(0, "c1");
+    expect(past()).toBe(3);
+
+    store.getState().setCoverCrop(0, { x: 0.2, y: 0.8, scale: 2 });
+    expect(past()).toBe(4);
+
+    store.getState().clearCoverSlot(0);
+    expect(past()).toBe(5);
+  });
+
+  it("cover no-ops create NO history entry and keep the document reference", () => {
+    const store = makeStore();
+    const before = store.getState().document;
+
+    store.getState().updateCoverStyle({ title: "" }); // same title
+    store.getState().switchCoverLayout("cover-classic"); // same layout
+    store.getState().placeCoverPhoto(0, "ghost"); // cover-classic has zero slots
+    store.getState().setCoverCrop(0, { x: 0.5, y: 0.5, scale: 2 }); // OOB slot
+    store.getState().clearCoverSlot(0); // OOB slot
+
+    expect(store.getState().document).toBe(before);
+    expect(store.temporal.getState().pastStates).toHaveLength(0);
+  });
+
+  it("undo after a cover edit restores the previous document (title round-trips)", () => {
+    const store = makeStore();
+    const doc0 = store.getState().document;
+
+    store.getState().updateCoverStyle({ title: "Galle 2026" });
+    expect(store.getState().document.cover.title).toBe("Galle 2026");
+
+    store.temporal.getState().undo();
+    expect(store.getState().document).toBe(doc0);
+    expect(store.getState().document.cover.title).toBe("");
+
+    store.temporal.getState().redo();
+    expect(store.getState().document.cover.title).toBe("Galle 2026");
+  });
+
+  it("cover and spread edits interleave in ONE history with correct undo order", () => {
+    const store = makeStore();
+    store.getState().placePhoto(0, 0, "p1"); // 1: spread edit
+    store.getState().updateCoverStyle({ title: "T" }); // 2: cover edit
+    store.getState().switchCoverLayout("cover-full"); // 3: cover edit
+    store.getState().placeCoverPhoto(0, "c1"); // 4: cover edit
+    store.getState().placePhoto(0, 1, "p2"); // 5: spread edit
+    expect(store.temporal.getState().pastStates).toHaveLength(5);
+
+    store.temporal.getState().undo(); // drops 5
+    expect(slotAt(store.getState().document, 0, 1)).toEqual({ kind: "empty" });
+    expect(store.getState().document.cover.photoSlots[0]).toMatchObject({
+      kind: "photo",
+      photoId: "c1",
+    });
+
+    store.temporal.getState().undo(); // drops 4
+    expect(store.getState().document.cover.photoSlots).toEqual([
+      { kind: "empty" },
+    ]);
+
+    store.temporal.getState().undo(); // drops 3
+    expect(store.getState().document.cover.layoutId).toBe("cover-classic");
+    expect(store.getState().document.cover.title).toBe("T");
+
+    store.temporal.getState().undo(); // drops 2
+    expect(store.getState().document.cover.title).toBe("");
+    expect(asPhoto(slotAt(store.getState().document, 0, 0)).photoId).toBe("p1");
+
+    store.temporal.getState().undo(); // drops 1
+    expect(slotAt(store.getState().document, 0, 0)).toEqual({ kind: "empty" });
+    expect(store.temporal.getState().pastStates).toHaveLength(0);
+    expect(store.temporal.getState().futureStates).toHaveLength(5);
+  });
+});
+
+describe("cover selection side effects", () => {
+  it("switchCoverLayout resets slotIndex to null and keeps the cover view", () => {
+    const store = makeStore();
+    store.getState().selectCover();
+    store.getState().selectSlot(0);
+
+    store.getState().switchCoverLayout("cover-duo");
+
+    expect(store.getState().selection).toEqual({
+      view: "cover",
+      spreadIndex: 0,
+      slotIndex: null,
+    });
+    expect(store.getState().document.cover.layoutId).toBe("cover-duo");
+  });
+
+  it("placeCoverPhoto works on the committed document after switchCoverLayout", () => {
+    const store = makeStore();
+    store.getState().switchCoverLayout("cover-full");
+
+    store.getState().placeCoverPhoto(0, "c1");
+
+    expect(store.getState().document.cover.photoSlots[0]).toEqual({
+      kind: "photo",
+      photoId: "c1",
+      crop: DEFAULT_CROP,
+    });
   });
 });

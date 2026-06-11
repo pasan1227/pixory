@@ -55,6 +55,20 @@ export async function getSessionToken(): Promise<string | null> {
   return verifySessionValue(value, sessionSecret());
 }
 
+// Adopt an existing session (resume-link redemption: the user's other
+// device). Replaces this browser's session cookie wholesale — with real
+// accounts this is where "log in via link" would slot in.
+export async function adoptSessionToken(token: string): Promise<void> {
+  const store = await cookies();
+  store.set(SESSION_COOKIE, signSessionValue(token, sessionSecret()), {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: SESSION_TTL_SECONDS,
+  });
+}
+
 // Get the session token, minting and setting the cookie if absent. Cookies
 // can only be written in Server Actions and Route Handlers — call it there.
 export async function ensureSessionToken(): Promise<string> {

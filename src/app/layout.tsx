@@ -29,7 +29,18 @@ export default function RootLayout({
       lang="en"
       className={`${fraunces.variable} ${inter.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col">{children}</body>
+      {/* Zero-cost aliases so cover previews outside the editor (create,
+          my-books) render the already-loaded fonts; Lora/Caveat still load
+          only in the (editor) route group. */}
+      <body
+        className="flex min-h-full flex-col"
+        style={{
+          ["--font-book-fraunces" as string]: "var(--font-fraunces)",
+          ["--font-book-inter" as string]: "var(--font-inter)",
+        }}
+      >
+        {children}
+      </body>
     </html>
   );
 }

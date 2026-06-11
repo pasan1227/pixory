@@ -73,15 +73,23 @@ export function PhotoPickerSheet({
     };
   }, [open]);
 
-  // Escape closes; focus moves into the dialog on open.
+  // Escape closes; focus moves into the dialog on open. Registered in the
+  // CAPTURE phase: while open this is the topmost modal, so it must consume
+  // Escape (stopPropagation + preventDefault) before the bubble-phase
+  // listeners of the mobile sheets and the canvas deselect underneath —
+  // capture at window fires first and stopping propagation there prevents
+  // the bubble-phase window listeners from ever seeing the keystroke.
   useEffect(() => {
     if (!open) return;
     dialogRef.current?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      if (event.key !== "Escape") return;
+      event.stopPropagation();
+      event.preventDefault();
+      onClose();
     };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
   }, [open, onClose]);
 
   if (!open) return null;

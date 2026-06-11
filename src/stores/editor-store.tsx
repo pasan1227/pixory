@@ -5,6 +5,14 @@ import { temporal } from "zundo";
 import { createStore, useStore } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import {
+  clearCoverSlot as clearCoverSlotOp,
+  placeCoverPhoto as placeCoverPhotoOp,
+  setCoverCrop as setCoverCropOp,
+  switchCoverLayout as switchCoverLayoutOp,
+  updateCoverStyle as updateCoverStyleOp,
+  type CoverStylePatch,
+} from "@/lib/cover-ops";
+import {
   addSpreadAfter as addSpreadAfterOp,
   clearSlot as clearSlotOp,
   moveSpread as moveSpreadOp,
@@ -35,6 +43,9 @@ import type {
 // ---------------------------------------------------------------------------
 
 export interface EditorSelection {
+  // What the canvas shows: the cover or a spread. slotIndex addresses the
+  // cover's photoSlots when view is "cover", the spread's slots otherwise.
+  view: "cover" | "spread";
   spreadIndex: number;
   slotIndex: number | null;
 }
@@ -42,8 +53,14 @@ export interface EditorSelection {
 export interface EditorState {
   document: BookDocument;
   selection: EditorSelection;
+  selectCover(): void;
   selectSpread(index: number): void;
   selectSlot(slotIndex: number | null): void;
+  updateCoverStyle(patch: CoverStylePatch): void;
+  switchCoverLayout(layoutId: string): void;
+  placeCoverPhoto(slotIndex: number, photoId: string): void;
+  setCoverCrop(slotIndex: number, crop: Crop): void;
+  clearCoverSlot(slotIndex: number): void;
   placePhoto(spreadIndex: number, slotIndex: number, photoId: string): void;
   setCrop(spreadIndex: number, slotIndex: number, crop: Crop): void;
   setText(
@@ -87,10 +104,17 @@ export function createEditorStore(initialDocument: BookDocument) {
 
         return {
           document: initialDocument,
-          selection: { spreadIndex: 0, slotIndex: null },
+          selection: { view: "spread", spreadIndex: 0, slotIndex: null },
+
+          selectCover: () =>
+            set((state) => {
+              state.selection.view = "cover";
+              state.selection.slotIndex = null;
+            }),
 
           selectSpread: (index) =>
             set((state) => {
+              state.selection.view = "spread";
               state.selection.spreadIndex = clampIndex(
                 index,
                 state.document.spreads.length,
@@ -102,6 +126,26 @@ export function createEditorStore(initialDocument: BookDocument) {
             set((state) => {
               state.selection.slotIndex = slotIndex;
             }),
+
+          updateCoverStyle: (patch) =>
+            void apply(updateCoverStyleOp(get().document, patch)),
+
+          switchCoverLayout: (layoutId) =>
+            void apply(
+              switchCoverLayoutOp(get().document, layoutId),
+              (selection) => {
+                selection.slotIndex = null;
+              },
+            ),
+
+          placeCoverPhoto: (slotIndex, photoId) =>
+            void apply(placeCoverPhotoOp(get().document, slotIndex, photoId)),
+
+          setCoverCrop: (slotIndex, crop) =>
+            void apply(setCoverCropOp(get().document, slotIndex, crop)),
+
+          clearCoverSlot: (slotIndex) =>
+            void apply(clearCoverSlotOp(get().document, slotIndex)),
 
           placePhoto: (spreadIndex, slotIndex, photoId) =>
             void apply(

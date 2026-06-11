@@ -170,7 +170,11 @@ export function EditorHeader({
   const title = useEditorStore((s) => s.document.cover.title);
   return (
     <header className="flex h-14 shrink-0 items-center gap-1 border-b border-zinc-200 bg-zinc-50 px-2 sm:gap-3 sm:px-4">
-      <Link href="/" aria-label={en.brand.name} className={ICON_BUTTON_CLASS}>
+      <Link
+        href="/my-books"
+        aria-label={en.myBooks.title}
+        className={ICON_BUTTON_CLASS}
+      >
         <ChevronLeft className="size-5" aria-hidden="true" />
       </Link>
       <h1 className="min-w-0 flex-1 truncate font-display text-sm font-semibold text-ink sm:text-base">

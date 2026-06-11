@@ -6,24 +6,67 @@ import { DISTRICT_IDS } from "@/data/districts";
 import { priceBook, type PriceBreakdown } from "@/lib/pricing";
 import { bookDocumentSchema, bookFormatSchema } from "@/lib/schemas/book";
 import { createEmptyBookDocument } from "@/lib/new-book";
-import { createBook, updateBookDocument } from "@/server/repositories/books";
+import { updateCoverStyle } from "@/lib/cover-ops";
+import { switchCoverLayout } from "@/lib/cover-ops";
+import {
+  createBook,
+  deleteBook,
+  updateBookDocument,
+} from "@/server/repositories/books";
+import { getStorage } from "@/server/storage";
 import { ensureSessionToken, getSessionToken } from "@/server/session";
+import {
+  coverColorIdSchema,
+} from "@/lib/schemas/book";
+import { COVER_LAYOUTS } from "@/data/layouts";
 
-const createBookInputSchema = z.object({ format: bookFormatSchema });
+const coverLayoutIdSchema = z
+  .string()
+  .refine((id) => COVER_LAYOUTS.some((layout) => layout.id === id));
+
+const createBookInputSchema = z.object({
+  format: bookFormatSchema,
+  coverLayout: coverLayoutIdSchema.optional(),
+  coverColor: coverColorIdSchema.optional(),
+});
 
 // Creates an empty book under the caller's (possibly freshly minted)
 // anonymous session and lands them in the editor.
 export async function createBookAction(formData: FormData): Promise<void> {
   const parsed = createBookInputSchema.safeParse({
     format: formData.get("format"),
+    coverLayout: formData.get("coverLayout") ?? undefined,
+    coverColor: formData.get("coverColor") ?? undefined,
   });
   if (!parsed.success) {
     redirect("/create");
   }
   const sessionToken = await ensureSessionToken();
-  const document = createEmptyBookDocument(parsed.data.format);
+  let document = createEmptyBookDocument(parsed.data.format);
+  if (parsed.data.coverLayout) {
+    document = switchCoverLayout(document, parsed.data.coverLayout);
+  }
+  if (parsed.data.coverColor) {
+    document = updateCoverStyle(document, { colorId: parsed.data.coverColor });
+  }
   const book = await createBook(sessionToken, document);
   redirect(`/editor/${book.id}`);
+}
+
+// My-books delete: removes the book row (photos cascade) and cleans up
+// stored files. Refused for books that have orders.
+export async function deleteBookAction(input: {
+  bookId: string;
+}): Promise<{ ok: boolean }> {
+  const sessionToken = await getSessionToken();
+  if (!sessionToken) return { ok: false };
+  const parsed = z.object({ bookId: z.string().min(1) }).safeParse(input);
+  if (!parsed.success) return { ok: false };
+  const result = await deleteBook(parsed.data.bookId, sessionToken);
+  if (!result) return { ok: false };
+  const storage = getStorage();
+  await Promise.allSettled(result.photoKeys.map((key) => storage.delete(key)));
+  return { ok: true };
 }
 
 const saveBookInputSchema = z.object({

@@ -97,7 +97,10 @@ locales · automated print-PDF generation.
    remapSlots, filmstrip with dnd reorder, undo/redo (zundo, 50 cap,
    pan gestures coalesced), debounced autosave with updatedAt guard,
    server-quoted live pricing (editor JS 287KB gz, budget 350KB)
-4. ⬜ Cover step, /create flow, anonymous sessions, my-books/resume
+4. ✅ Cover step in the editor (title/subtitle/spine, 4 fonts, 8 colors,
+   6 layouts, cover photos w/ pan-zoom), marketing-grade /create picker
+   with live preview, /my-books (thumbnails, copy-once resume links,
+   two-step delete), crawler-safe /resume confirmation flow
 5. ⬜ Auto-create, preview mode, completeness checks
 6. ⬜ Checkout, orders, snapshotting, admin
 7. ⬜ Marketing site, SEO, polish

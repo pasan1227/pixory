@@ -1,21 +1,26 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { CoverPanel } from "@/components/editor/panel/CoverPanel";
+import { CoverPhotoControls } from "@/components/editor/panel/CoverPhotoControls";
 import { LayoutPanel } from "@/components/editor/panel/LayoutPanel";
 import { PhotoPanel } from "@/components/editor/panel/PhotoPanel";
 import { TextPanel, type TextValue } from "@/components/editor/panel/TextPanel";
-import { getSpreadLayout } from "@/data/layouts";
+import type { PickTarget } from "@/components/editor/pick-target";
+import { getCoverLayout, getSpreadLayout } from "@/data/layouts";
 import { en } from "@/i18n/en";
 import type { PhotoDto } from "@/lib/schemas/photo";
 import { useEditorStore } from "@/stores/editor-store";
-import type { SlotContent } from "@/types/book";
+import type { BookDocument, SlotContent } from "@/types/book";
 import type { SlotDef } from "@/types/layout";
 
 type ContextPanelProps = Readonly<{
   photosById: Record<string, PhotoDto>;
-  onRequestPhotoPick: (spreadIndex: number, slotIndex: number) => void;
+  onRequestPhotoPick: (target: PickTarget) => void;
   onDismiss?: () => void;
 }>;
+
+type PanelContent = { heading: string; body: ReactNode };
 
 // Defaults for a text slot that hasn't been written into yet.
 function textValueOf(content: SlotContent | undefined): TextValue {
@@ -23,6 +28,32 @@ function textValueOf(content: SlotContent | undefined): TextValue {
     return { text: content.text, fontId: content.fontId, align: content.align };
   }
   return { text: "", fontId: "inter", align: "center" };
+}
+
+// Cover view: no slot selected → cover style editing; a photo slot selected →
+// that slot's controls. A stale slot selection (e.g. undo restored a layout
+// with fewer photo slots) falls back to style mode.
+function coverContent(args: {
+  document: BookDocument;
+  slotIndex: number | null;
+  photosById: Record<string, PhotoDto>;
+  onRequestPhotoPick: (target: PickTarget) => void;
+}): PanelContent {
+  const slotCount = getCoverLayout(args.document.cover.layoutId).photoSlots
+    .length;
+  if (args.slotIndex === null || args.slotIndex >= slotCount) {
+    return { heading: en.editor.cover.panelTitle, body: <CoverPanel /> };
+  }
+  return {
+    heading: en.editor.panel.photo,
+    body: (
+      <CoverPhotoControls
+        slotIndex={args.slotIndex}
+        photosById={args.photosById}
+        onRequestPhotoPick={args.onRequestPhotoPick}
+      />
+    ),
+  };
 }
 
 // Renders in both the desktop sidebar (w-full column) and the mobile bottom
@@ -33,6 +64,7 @@ export function ContextPanel({
   onDismiss,
 }: ContextPanelProps) {
   const doc = useEditorStore((s) => s.document);
+  const view = useEditorStore((s) => s.selection.view);
   const slotIndex = useEditorStore((s) => s.selection.slotIndex);
   // After undo, selection.spreadIndex may point past the last spread.
   const spreadIndex = useEditorStore((s) =>
@@ -51,49 +83,66 @@ export function ContextPanel({
       ? undefined
       : getSpreadLayout(spread.layoutId).slots[slotIndex];
 
-  let heading: string = en.editor.panel.layout;
-  let body: ReactNode;
-  if (slotIndex === null || layoutSlot === undefined) {
-    body = (
-      <LayoutPanel
-        format={doc.format}
-        currentLayoutId={spread.layoutId}
-        onSelect={(layoutId) => switchLayout(spreadIndex, layoutId)}
-      />
-    );
+  let content: PanelContent;
+  if (view === "cover") {
+    content = coverContent({
+      document: doc,
+      slotIndex,
+      photosById,
+      onRequestPhotoPick,
+    });
+  } else if (slotIndex === null || layoutSlot === undefined) {
+    content = {
+      heading: en.editor.panel.layout,
+      body: (
+        <LayoutPanel
+          format={doc.format}
+          currentLayoutId={spread.layoutId}
+          onSelect={(layoutId) => switchLayout(spreadIndex, layoutId)}
+        />
+      ),
+    };
   } else if (layoutSlot.type === "text") {
-    heading = en.editor.panel.text;
-    body = (
-      <TextPanel
-        value={textValueOf(spread.slots[slotIndex])}
-        onChange={(next) => setText(spreadIndex, slotIndex, next)}
-      />
-    );
+    content = {
+      heading: en.editor.panel.text,
+      body: (
+        <TextPanel
+          value={textValueOf(spread.slots[slotIndex])}
+          onChange={(next) => setText(spreadIndex, slotIndex, next)}
+        />
+      ),
+    };
   } else {
-    heading = en.editor.panel.photo;
-    const content: SlotContent | undefined = spread.slots[slotIndex];
+    const slotContent: SlotContent | undefined = spread.slots[slotIndex];
     const placement =
-      content !== undefined && content.kind === "photo" ? content : null;
-    body = (
-      <PhotoPanel
-        format={doc.format}
-        layoutSlot={layoutSlot}
-        placement={placement}
-        photo={placement ? photosById[placement.photoId] : undefined}
-        onCropChange={(crop) => setCrop(spreadIndex, slotIndex, crop)}
-        onReplace={() => onRequestPhotoPick(spreadIndex, slotIndex)}
-        onRemove={() => clearSlot(spreadIndex, slotIndex)}
-      />
-    );
+      slotContent !== undefined && slotContent.kind === "photo"
+        ? slotContent
+        : null;
+    content = {
+      heading: en.editor.panel.photo,
+      body: (
+        <PhotoPanel
+          format={doc.format}
+          layoutSlot={layoutSlot}
+          placement={placement}
+          photo={placement ? photosById[placement.photoId] : undefined}
+          onCropChange={(crop) => setCrop(spreadIndex, slotIndex, crop)}
+          onReplace={() =>
+            onRequestPhotoPick({ view: "spread", spreadIndex, slotIndex })
+          }
+          onRemove={() => clearSlot(spreadIndex, slotIndex)}
+        />
+      ),
+    };
   }
 
   return (
     <section
-      aria-label={heading}
+      aria-label={content.heading}
       className="flex w-full flex-col gap-3 rounded-lg border border-zinc-200 bg-zinc-50 p-3"
     >
       <header className="flex items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold text-ink">{heading}</h2>
+        <h2 className="text-sm font-semibold text-ink">{content.heading}</h2>
         {onDismiss && (
           <button
             type="button"
@@ -104,7 +153,7 @@ export function ContextPanel({
           </button>
         )}
       </header>
-      {body}
+      {content.body}
     </section>
   );
 }

@@ -64,14 +64,77 @@ export async function findOwnedBook(
   return row ? toRecord(row) : null;
 }
 
+export interface BookListItem extends BookRecord {
+  photoCount: number;
+}
+
 export async function listBooksBySession(
   sessionToken: string,
-): Promise<BookRecord[]> {
+): Promise<BookListItem[]> {
   const rows = await prisma.book.findMany({
     where: { sessionToken },
     orderBy: { updatedAt: "desc" },
+    include: { _count: { select: { photos: true } } },
   });
-  return rows.map(toRecord);
+  return rows.map((row) => ({
+    ...toRecord(row),
+    photoCount: row._count.photos,
+  }));
+}
+
+// Side-effect-free lookup for the resume confirmation page (GETs must not
+// redeem: WhatsApp link previews and browser prefetches hit the URL before
+// the user does).
+export async function peekBookByShareToken(
+  shareToken: string,
+): Promise<{ title: string } | null> {
+  const row = await prisma.book.findUnique({
+    where: { shareToken },
+    select: { document: true },
+  });
+  if (!row) return null;
+  return { title: migrateBookDocument(JSON.parse(row.document)).cover.title };
+}
+
+// Resume-link redemption: looks the book up by its share token and rotates
+// the token in the same guarded update, so a link works exactly once. Returns
+// the book's session token — the resuming device ADOPTS that session (same
+// person on another device; with real accounts this becomes a login).
+export async function resumeBookByShareToken(
+  shareToken: string,
+): Promise<{ bookId: string; sessionToken: string } | null> {
+  const row = await prisma.book.findUnique({ where: { shareToken } });
+  if (!row) return null;
+  // Guarded on the OLD token: two concurrent redemptions can't both win.
+  const rotated = await prisma.book.updateMany({
+    where: { id: row.id, shareToken },
+    data: { shareToken: randomUUID() },
+  });
+  if (rotated.count === 0) return null;
+  return { bookId: row.id, sessionToken: row.sessionToken };
+}
+
+// Delete a book with its photos (FK cascade). Refuses when orders reference
+// the book — placed orders must keep their snapshot source row intact.
+export async function deleteBook(
+  bookId: string,
+  sessionToken: string,
+): Promise<{ photoKeys: string[] } | null> {
+  const book = await prisma.book.findFirst({
+    where: { id: bookId, sessionToken },
+    include: {
+      photos: { select: { previewKey: true, originalKey: true } },
+      _count: { select: { orders: true } },
+    },
+  });
+  if (!book || book._count.orders > 0) return null;
+  await prisma.book.delete({ where: { id: book.id } });
+  const photoKeys = book.photos.flatMap((photo) =>
+    photo.originalKey
+      ? [photo.previewKey, photo.originalKey]
+      : [photo.previewKey],
+  );
+  return { photoKeys };
 }
 
 // Autosave write: last-write-wins guarded by updatedAt. The update only
