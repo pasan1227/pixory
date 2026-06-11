@@ -92,7 +92,11 @@ locales · automated print-PDF generation.
 2. ✅ Photo upload pipeline (two-stage preview/original, concurrency 3,
    retry), StorageAdapter + local impl + authenticated serving route,
    anonymous sessions, repositories, photo tray
-3. ⬜ Editor core (canvas, layout switching, slots, undo/redo, autosave)
+3. ✅ Editor core: spread canvas + shared renderer, slot interactions
+   (pick/pan/zoom/replace/remove, DPI badges), layout switching via
+   remapSlots, filmstrip with dnd reorder, undo/redo (zundo, 50 cap,
+   pan gestures coalesced), debounced autosave with updatedAt guard,
+   server-quoted live pricing (editor JS 287KB gz, budget 350KB)
 4. ⬜ Cover step, /create flow, anonymous sessions, my-books/resume
 5. ⬜ Auto-create, preview mode, completeness checks
 6. ⬜ Checkout, orders, snapshotting, admin

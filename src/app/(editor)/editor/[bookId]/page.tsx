@@ -1,14 +1,15 @@
 import { notFound } from "next/navigation";
-import { PhotoTray } from "@/components/editor/PhotoTray";
-import { en } from "@/i18n/en";
+import { EditorShell } from "@/components/editor/EditorShell";
+import { priceBook } from "@/lib/pricing";
+import { PAGES_PER_SPREAD } from "@/lib/print-specs";
 import { toPhotoDto } from "@/server/photo-dto";
 import { findOwnedBook } from "@/server/repositories/books";
 import { listPhotosByBook } from "@/server/repositories/photos";
 import { getSessionToken } from "@/server/session";
 
-// Minimal editor shell for the photo-tray milestone. Milestone 3 adds the
-// spread canvas in the placeholder column; the tray is already in its final
-// position (left column on lg+, full width on mobile).
+// RSC entry for the editor: ownership check, photo list, and the initial
+// server-computed price (the client never recomputes — it re-quotes via
+// quotePriceAction when the page count changes).
 export default async function EditorPage({
   params,
 }: {
@@ -22,26 +23,18 @@ export default async function EditorPage({
   if (!book) notFound();
 
   const records = await listPhotosByBook(bookId, sessionToken);
-  const initialPhotos = records.map(toPhotoDto);
-  const title = book.document.cover.title.trim() || en.editor.untitled;
+  const initialPrice = priceBook({
+    format: book.document.format,
+    pageCount: book.document.spreads.length * PAGES_PER_SPREAD,
+  });
 
   return (
-    <div className="flex min-h-dvh flex-col bg-zinc-100">
-      <header className="border-b border-zinc-200 bg-zinc-50 px-4 py-3">
-        <h1 className="truncate font-display text-lg font-semibold text-ink">
-          {title}
-        </h1>
-      </header>
-      <div className="flex flex-1 flex-col gap-4 p-3 sm:p-4 lg:flex-row lg:items-start">
-        <aside className="w-full lg:w-80 lg:shrink-0">
-          <PhotoTray bookId={book.id} initialPhotos={initialPhotos} />
-        </aside>
-        {/* Milestone 3: the spread canvas renders here. */}
-        <div
-          aria-hidden="true"
-          className="hidden min-h-[480px] flex-1 rounded-xl border border-dashed border-zinc-300 bg-zinc-50 lg:block"
-        />
-      </div>
-    </div>
+    <EditorShell
+      bookId={book.id}
+      document={book.document}
+      updatedAt={book.updatedAt.toISOString()}
+      initialPhotos={records.map(toPhotoDto)}
+      initialPrice={initialPrice}
+    />
   );
 }

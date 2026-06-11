@@ -74,6 +74,31 @@ export async function listBooksBySession(
   return rows.map(toRecord);
 }
 
+// Autosave write: last-write-wins guarded by updatedAt. The update only
+// applies when the row still carries the updatedAt the client loaded;
+// otherwise a newer write (another tab/device) wins and we report "conflict".
+export async function updateBookDocument(
+  bookId: string,
+  sessionToken: string,
+  document: BookDocument,
+  expectedUpdatedAt: Date,
+): Promise<BookRecord | "conflict" | null> {
+  const result = await prisma.book.updateMany({
+    where: { id: bookId, sessionToken, updatedAt: expectedUpdatedAt },
+    data: { document: serializeDocument(document) },
+  });
+  if (result.count === 1) {
+    const row = await prisma.book.findFirst({
+      where: { id: bookId, sessionToken },
+    });
+    return row ? toRecord(row) : null;
+  }
+  const owned = await prisma.book.count({
+    where: { id: bookId, sessionToken },
+  });
+  return owned > 0 ? "conflict" : null;
+}
+
 // True if the session owns the book — for callers that need a cheap guard
 // without materializing the document.
 export async function isBookOwned(

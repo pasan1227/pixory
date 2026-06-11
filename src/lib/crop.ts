@@ -75,6 +75,25 @@ export function cropToCss(
   return { width, height, left: -v.x * width, top: -v.y * height };
 }
 
+// Percentage variant of cropToCss for resolution-independent rendering: the
+// <img> is absolutely positioned inside the slot box using percentages of the
+// SLOT's dimensions, so the same numbers serve any rendered size (canvas,
+// thumbnail, admin preview). slotAspect must be the slot's physical aspect
+// (slotAspectRatio()), not the normalized rect's.
+export function cropToCssPercent(
+  photo: Size,
+  slotAspect: number,
+  crop: Crop,
+): { widthPct: number; heightPct: number; leftPct: number; topPct: number } {
+  const v = visibleRect(photo, slotAspect, crop);
+  return {
+    widthPct: 100 / v.w,
+    heightPct: 100 / v.h,
+    leftPct: (-v.x / v.w) * 100,
+    topPct: (-v.y / v.h) * 100,
+  };
+}
+
 // Drag-to-pan: convert a pointer delta (slot pixels) into an updated crop.
 // Dragging the photo right (positive dx) reveals more of its left side.
 export function panCropByPixels(

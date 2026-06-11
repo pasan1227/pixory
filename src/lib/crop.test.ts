@@ -3,6 +3,7 @@ import {
   DEFAULT_CROP,
   clampCrop,
   cropToCss,
+  cropToCssPercent,
   panCropByPixels,
   visibleRect,
   zoomCrop,
@@ -479,5 +480,42 @@ describe("zoomCrop", () => {
       expect(out.y).toBe(crop.y);
       expect(out.scale).toBe(1.7);
     });
+  });
+});
+
+describe("cropToCssPercent", () => {
+  it("matches cropToCss scaled to percentages for a concrete slot size", () => {
+    const photo = { width: 3000, height: 2000 };
+    const slotPx = { width: 400, height: 300 };
+    const crop = { x: 0.25, y: 0.75, scale: 1.5 };
+    const px = cropToCss(photo, slotPx, crop);
+    const pct = cropToCssPercent(photo, slotPx.width / slotPx.height, crop);
+    expect(pct.widthPct).toBeCloseTo((px.width / slotPx.width) * 100, 9);
+    expect(pct.heightPct).toBeCloseTo((px.height / slotPx.height) * 100, 9);
+    expect(pct.leftPct).toBeCloseTo((px.left / slotPx.width) * 100, 9);
+    expect(pct.topPct).toBeCloseTo((px.top / slotPx.height) * 100, 9);
+  });
+
+  it("covers the slot for any pan/zoom (img box always encloses 0-100%)", () => {
+    const photo = { width: 1200, height: 1600 };
+    for (const scale of [1, 1.7, 3]) {
+      for (const x of [0, 0.5, 1]) {
+        for (const y of [0, 0.5, 1]) {
+          const r = cropToCssPercent(photo, 2, { x, y, scale });
+          expect(r.leftPct).toBeLessThanOrEqual(1e-9);
+          expect(r.topPct).toBeLessThanOrEqual(1e-9);
+          expect(r.leftPct + r.widthPct).toBeGreaterThanOrEqual(100 - 1e-9);
+          expect(r.topPct + r.heightPct).toBeGreaterThanOrEqual(100 - 1e-9);
+        }
+      }
+    }
+  });
+
+  it("centered cover fit of a matching aspect is exactly 100% with no offset", () => {
+    const r = cropToCssPercent({ width: 800, height: 400 }, 2, DEFAULT_CROP);
+    expect(r.widthPct).toBeCloseTo(100, 9);
+    expect(r.heightPct).toBeCloseTo(100, 9);
+    expect(r.leftPct).toBeCloseTo(0, 9);
+    expect(r.topPct).toBeCloseTo(0, 9);
   });
 });

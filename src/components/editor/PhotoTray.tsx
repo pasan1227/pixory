@@ -1,19 +1,12 @@
 "use client";
 
 import { en } from "@/i18n/en";
-import type { PhotoDto } from "@/lib/schemas/photo";
 import { PhotoTrayItem } from "@/components/editor/PhotoTrayItem";
 import { UploadDropzone } from "@/components/editor/UploadDropzone";
-import {
-  useUploadManager,
-  type UploadItem,
+import type {
+  UploadItem,
+  UploadManager,
 } from "@/components/editor/useUploadManager";
-
-interface PhotoTrayProps {
-  bookId: string;
-  initialPhotos: PhotoDto[];
-  usedCounts?: Record<string, number>;
-}
 
 const STATUS_TEXT: Record<Exclude<UploadItem["status"], "failed">, string> = {
   processing: en.tray.processing,
@@ -81,12 +74,11 @@ function UploadRow({
 }
 
 export function PhotoTray({
-  bookId,
-  initialPhotos,
+  manager,
   usedCounts = {},
-}: PhotoTrayProps) {
+}: Readonly<{ manager: UploadManager; usedCounts?: Record<string, number> }>) {
   const { photos, uploads, addFiles, retryUpload, dismissUpload, removePhoto } =
-    useUploadManager({ bookId, initialPhotos });
+    manager;
 
   const isEmpty = photos.length === 0 && uploads.length === 0;
 
