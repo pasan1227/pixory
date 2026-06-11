@@ -1,0 +1,81 @@
+// Prisma schema — SQLite in dev, written to stay Postgres-compatible:
+// no SQLite-only types, no native enums (validated as string unions by Zod
+// at the repository boundary), JSON documents stored as TEXT.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Book {
+  id           String   @id @default(cuid())
+  // Anonymous ownership: signed session token from the httpOnly cookie.
+  // Auth seam: when real accounts arrive, a userId column slots in next to this.
+  sessionToken String
+  // Resume-link token; rotated on every use.
+  shareToken   String   @unique
+  // The entire BookDocument as JSON text — single source of truth for the book.
+  // Serialized/parsed + Zod-validated exclusively in the repository layer.
+  document     String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  photos       Photo[]
+  orders       Order[]
+
+  @@index([sessionToken])
+}
+
+model Photo {
+  id               String    @id @default(cuid())
+  bookId           String
+  book             Book      @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  // StorageAdapter keys: compressed ~1600px preview uploaded first,
+  // full-resolution original uploaded in the background.
+  previewKey       String
+  originalKey      String?
+  originalUploaded Boolean   @default(false)
+  // Original pixel dimensions — inputs to effectiveDpi().
+  width            Int
+  height           Int
+  fileName         String
+  // EXIF capture date (client-extracted) — drives auto-create ordering.
+  capturedAt       DateTime?
+  createdAt        DateTime  @default(now())
+
+  @@index([bookId])
+}
+
+model Order {
+  id               String   @id @default(cuid())
+  // Human-facing reference, PB-{base36 timestamp}.
+  reference        String   @unique
+  bookId           String
+  book             Book     @relation(fields: [bookId], references: [id])
+  // Immutable BookDocument snapshot taken at submission. Orders render only
+  // from this — never from the live book document.
+  documentSnapshot String
+  customerName     String
+  // E.164, normalized via normalizePhoneLK() before persisting.
+  phone            String
+  email            String?
+  district         String
+  address          String
+  // 'cod' | 'bank_transfer' | 'card_payhere' — preference only. TODO: PayHere
+  paymentPref      String
+  // 'received' | 'proofing' | 'printing' | 'dispatched' | 'delivered'
+  status           String   @default("received")
+  format           String
+  pageCount        Int
+  // All amounts in whole LKR, computed server-side by priceBook().
+  subtotal         Int
+  delivery         Int
+  total            Int
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([bookId])
+}

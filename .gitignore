@@ -39,3 +39,21 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+/src/generated/prisma
+
+# package manager — yarn only
+package-lock.json
+pnpm-lock.yaml
+
+# env example is the documented template
+!.env.example
+
+# sqlite dev database
+prisma/dev.db*
+
+# generated prisma client
+/src/generated/
+
+# local photo storage (StorageAdapter local impl)
+/storage/

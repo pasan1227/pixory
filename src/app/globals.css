@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+@theme {
+  /* Warm editorial palette — the only colors components may use, plus the
+     built-in cool zinc scale for editor chrome so the book itself is always
+     the warmest thing on screen. */
+  --color-paper: #faf7f2;
+  --color-ink: #1c1917;
+  --color-terracotta: #c2654b;
+  --color-terracotta-deep: #a84f37;
+  --color-sage: #8a9b7e;
+  --color-sage-deep: #6f8163;
+  --color-sand: #ede6db;
+}
+
+@theme inline {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}

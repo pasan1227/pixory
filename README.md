@@ -1,36 +1,97 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Pixela (working name)
 
-## Getting Started
+Premium photobook platform for the Sri Lankan market: a warm editorial marketing
+site plus a constrained, Once Upon-style photobook editor (preset layouts,
+curated fonts and cover colors, pan/zoom cropping in fixed slots) with order
+intake. Printed in Colombo, delivered island-wide.
 
-First, run the development server:
+## Setup
 
 ```bash
-npm run dev
-# or
+yarn install
+cp .env.example .env   # then edit values
+yarn db:migrate        # creates prisma/dev.db and generates the client
 yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Yarn only — never npm or pnpm. `package-lock.json` is gitignored; delete it if
+one appears.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Commands
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Command          | Purpose                                            |
+| ---------------- | -------------------------------------------------- |
+| `yarn dev`       | dev server                                         |
+| `yarn build`     | production build — must pass with zero TS errors   |
+| `yarn lint`      | ESLint, zero warnings tolerated                    |
+| `yarn test`      | Vitest unit tests                                  |
+| `yarn test:watch`| Vitest watch mode                                  |
+| `yarn db:migrate`| `prisma migrate dev`                               |
+| `yarn db:studio` | Prisma Studio                                      |
 
-## Learn More
+## Environment variables
 
-To learn more about Next.js, take a look at the following resources:
+See `.env.example`. `DATABASE_URL` is SQLite in dev; the schema is written
+Postgres-compatible (no native enums, no SQLite-only types). For prod, point at
+Postgres and swap the driver adapter where the Prisma client is constructed
+(`@prisma/adapter-better-sqlite3` → `@prisma/adapter-pg`).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Where to change things
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| What                          | Where                                            |
+| ----------------------------- | ------------------------------------------------ |
+| Brand name                    | `src/data/site.ts` (`BRAND_NAME`)                |
+| WhatsApp number               | `src/data/site.ts` (`WHATSAPP_NUMBER`)           |
+| Prices & delivery fees        | `src/lib/pricing.ts` — the ONLY pricing location |
+| Book formats & physical specs | `src/lib/print-specs.ts`                         |
+| Layout templates              | `src/data/layouts.ts`                            |
+| Cover colors / in-book fonts  | `src/data/cover-colors.ts`, `src/data/book-fonts.ts` (ids fixed in `src/lib/schemas/book.ts`) |
+| Districts                     | `src/data/districts.ts` (canonical 25)           |
+| User-facing strings           | `src/i18n/en.ts` (everything; Sinhala/Tamil additive later) |
+| External image URLs           | `src/data/images.ts`                             |
 
-## Deploy on Vercel
+## Architecture
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **The book document is the single source of truth.** One versioned JSON
+  `BookDocument` (Zod schemas: `src/lib/schemas/book.ts`; inferred types:
+  `src/types/book.ts`). All geometry is normalized 0–1 floats relative to
+  spread dimensions — never pixels. Screen, thumbnails, admin preview and the
+  future 300 DPI print pipeline render the same document. Shape changes bump
+  `schemaVersion` + add a migration in `src/lib/book-migrations.ts`.
+- **Crop model** (`src/lib/crop.ts`): photos cover-fit their slot, then
+  `scale ≥ 1` zooms; `crop.x/y ∈ [0,1]` are the fraction of the pan range
+  consumed (0.5 = centered), so any stored crop is valid at any zoom.
+- **Orders snapshot the document** onto the Order row at submission; orders
+  render only from their snapshot.
+- **Repository pattern:** all DB access via `src/server/repositories/*`
+  (arrives milestone 2+); route handlers and server actions never import
+  Prisma directly. Generated client lives in `src/generated/prisma`
+  (gitignored; `yarn prisma generate` recreates it).
+- **Adapter seams:** file storage via `StorageAdapter` (`src/server/storage/`,
+  local-filesystem impl writing to `./storage/`; S3/R2 is interface-only later).
+  Notifications via `Notifier` (console impl; Resend later). Payment is a
+  captured preference enum only — `TODO: PayHere` marks the boundary.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Print pipeline notes (deferred)
+
+`generatePrintPdf(orderId)` is stubbed (milestone 6): walks the order's
+snapshotted document + `src/lib/print-specs.ts` at 300 DPI with 3 mm bleed,
+CMYK conversion at the printer. The normalized geometry makes this a contained
+task — no editor code involved.
+
+## Deferred from v1
+
+PayHere integration · S3/R2 storage adapter · Resend email notifier · HEIC
+uploads · user accounts (seam in `src/server/session.ts`) · Sinhala/Tamil
+locales · automated print-PDF generation.
+
+## Milestone status
+
+1. ✅ Scaffold, Prisma schema, document model, layouts/print specs, pure
+   helpers (crop, DPI, remap, pricing, distribution, phone) with tests
+2. ⬜ Photo upload pipeline + storage adapter + tray
+3. ⬜ Editor core (canvas, layout switching, slots, undo/redo, autosave)
+4. ⬜ Cover step, /create flow, anonymous sessions, my-books/resume
+5. ⬜ Auto-create, preview mode, completeness checks
+6. ⬜ Checkout, orders, snapshotting, admin
+7. ⬜ Marketing site, SEO, polish
