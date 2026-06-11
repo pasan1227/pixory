@@ -1,12 +1,14 @@
 "use client";
 
 import { en } from "@/i18n/en";
+import { AutoCreateCta } from "@/components/editor/AutoCreateCta";
 import { PhotoTrayItem } from "@/components/editor/PhotoTrayItem";
 import { UploadDropzone } from "@/components/editor/UploadDropzone";
 import type {
   UploadItem,
   UploadManager,
 } from "@/components/editor/useUploadManager";
+import type { PhotoDto } from "@/lib/schemas/photo";
 
 const STATUS_TEXT: Record<Exclude<UploadItem["status"], "failed">, string> = {
   processing: en.tray.processing,
@@ -76,7 +78,16 @@ function UploadRow({
 export function PhotoTray({
   manager,
   usedCounts = {},
-}: Readonly<{ manager: UploadManager; usedCounts?: Record<string, number> }>) {
+  onAutoCreate,
+  autoCreateBookIsEmpty = false,
+  autoCreateLeftoverCount = null,
+}: Readonly<{
+  manager: UploadManager;
+  usedCounts?: Record<string, number>;
+  onAutoCreate?: (photos: PhotoDto[]) => void;
+  autoCreateBookIsEmpty?: boolean;
+  autoCreateLeftoverCount?: number | null;
+}>) {
   const { photos, uploads, addFiles, retryUpload, dismissUpload, removePhoto } =
     manager;
 
@@ -88,6 +99,14 @@ export function PhotoTray({
       className="flex flex-col gap-3 rounded-lg border border-zinc-200 bg-zinc-50 p-3"
     >
       <h2 className="text-sm font-semibold text-ink">{en.tray.title}</h2>
+      {onAutoCreate && photos.length > 0 && (
+        <AutoCreateCta
+          photos={photos}
+          bookIsEmpty={autoCreateBookIsEmpty}
+          leftoverCount={autoCreateLeftoverCount}
+          onAutoCreate={onAutoCreate}
+        />
+      )}
       <UploadDropzone onAddFiles={addFiles} />
       {uploads.length > 0 && (
         // Polite live region so status changes and failures (the only feedback

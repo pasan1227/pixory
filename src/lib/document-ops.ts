@@ -151,6 +151,19 @@ export function removeSpread(
   });
 }
 
+// Replace the whole spread list (auto-create). One history entry; fully
+// undoable. Bounds are the caller's contract (distributePhotos respects
+// format min/max); an empty list is rejected as a no-op.
+export function replaceSpreads(
+  doc: BookDocument,
+  spreads: BookDocument["spreads"],
+): BookDocument {
+  if (spreads.length === 0 || spreads === doc.spreads) return doc;
+  return produce(doc, (draft) => {
+    draft.spreads = spreads;
+  });
+}
+
 export function moveSpread(
   doc: BookDocument,
   fromIndex: number,

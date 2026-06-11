@@ -1,6 +1,7 @@
 "use client";
 
 import { Images, SlidersHorizontal, X } from "lucide-react";
+import dynamic from "next/dynamic";
 import {
   useCallback,
   useEffect,
@@ -19,11 +20,34 @@ import { SpreadCanvas } from "@/components/editor/SpreadCanvas";
 import { useAutosave } from "@/components/editor/useAutosave";
 import { useUploadManager } from "@/components/editor/useUploadManager";
 import { en } from "@/i18n/en";
+import { checkCompleteness, type CompletenessIssue } from "@/lib/completeness";
+import { distributePhotos, type DistributablePhoto } from "@/lib/distribute";
 import { countPhotoUsage } from "@/lib/photo-usage";
 import type { PriceBreakdown } from "@/lib/pricing";
 import type { PhotoDto } from "@/lib/schemas/photo";
-import { EditorStoreProvider, useEditorStore } from "@/stores/editor-store";
+import {
+  EditorStoreProvider,
+  useEditorStore,
+  useEditorStoreApi,
+} from "@/stores/editor-store";
 import type { BookDocument } from "@/types/book";
+
+// Loaded only when the user opens the preview — keeps framer-motion (and the
+// whole page-turn experience) out of the editor's initial bundle.
+const PreviewOverlay = dynamic(
+  () => import("@/components/editor/preview/PreviewOverlay"),
+  {
+    ssr: false,
+    // Instant tap feedback while the page-turn chunk streams in on slow
+    // connections — a plain scrim, no framer dependency.
+    loading: () => (
+      <div aria-hidden="true" className="fixed inset-0 z-50 bg-ink/95" />
+    ),
+  },
+);
+
+// How long the "N photos didn't fit" notice stays up after an auto-create.
+const LEFTOVER_NOTICE_MS = 6000;
 
 // Bottom drawer for mobile (<lg). Stays mounted so the 150ms slide can play;
 // the closed state is `inert`, removing it from the tab order and the
@@ -115,6 +139,87 @@ function MobileActionBar({
   );
 }
 
+// Auto-create wiring: maps PhotoDto -> DistributablePhoto, reports how many
+// photos didn't fit (the same pure distribution the store re-runs when
+// applying), and applies via the store's single-history-entry action. The
+// leftover notice clears after a few seconds or on the next document change
+// (undo, manual edit) — whichever comes first.
+function useAutoCreate(bookDocument: BookDocument): {
+  bookIsEmpty: boolean;
+  leftoverCount: number | null;
+  handleAutoCreate: (photos: PhotoDto[]) => void;
+} {
+  const api = useEditorStoreApi();
+  const autoCreate = useEditorStore((s) => s.autoCreate);
+  const [leftoverCount, setLeftoverCount] = useState<number | null>(null);
+  // Document produced by the apply — so the very change auto-create makes
+  // doesn't immediately dismiss its own notice.
+  const appliedDocRef = useRef<BookDocument | null>(null);
+
+  const bookIsEmpty = useMemo(
+    () =>
+      bookDocument.spreads.every((spread) =>
+        spread.slots.every((slot) => slot.kind === "empty"),
+      ),
+    [bookDocument],
+  );
+
+  const handleAutoCreate = useCallback(
+    (photos: PhotoDto[]) => {
+      const mapped: DistributablePhoto[] = photos.map((photo) => ({
+        id: photo.id,
+        width: photo.width,
+        height: photo.height,
+        capturedAt: photo.capturedAt ? new Date(photo.capturedAt) : null,
+      }));
+      const leftover = distributePhotos(mapped, api.getState().document.format)
+        .leftoverPhotoIds.length;
+      autoCreate(mapped);
+      appliedDocRef.current = api.getState().document;
+      setLeftoverCount(leftover > 0 ? leftover : null);
+    },
+    [api, autoCreate],
+  );
+
+  useEffect(() => {
+    if (leftoverCount === null) return;
+    if (bookDocument !== appliedDocRef.current) {
+      setLeftoverCount(null);
+      return;
+    }
+    const timer = setTimeout(() => setLeftoverCount(null), LEFTOVER_NOTICE_MS);
+    return () => clearTimeout(timer);
+  }, [leftoverCount, bookDocument]);
+
+  return { bookIsEmpty, leftoverCount, handleAutoCreate };
+}
+
+// Jump from a preview-checklist issue to the offending slot. Land on the
+// right canvas view FIRST — selectCover/selectSpread reset slotIndex, so the
+// slot is selected after. On mobile the slot selection auto-opens the panel
+// sheet via the existing slotIndex wiring.
+function useFixIssue(
+  onBeforeNavigate: () => void,
+): (issue: CompletenessIssue) => void {
+  const selectCover = useEditorStore((s) => s.selectCover);
+  const selectSpread = useEditorStore((s) => s.selectSpread);
+  const selectSlot = useEditorStore((s) => s.selectSlot);
+  return useCallback(
+    (issue: CompletenessIssue) => {
+      onBeforeNavigate();
+      if (issue.target === "cover") {
+        selectCover();
+        // slotIndex -1 means "the title", not a slot — leave none selected.
+        selectSlot(issue.slotIndex >= 0 ? issue.slotIndex : null);
+      } else {
+        selectSpread(issue.spreadIndex);
+        selectSlot(issue.slotIndex);
+      }
+    },
+    [onBeforeNavigate, selectCover, selectSpread, selectSlot],
+  );
+}
+
 // Everything that reads the editor store lives here, INSIDE the provider.
 function EditorChrome({
   bookId,
@@ -138,12 +243,33 @@ function EditorChrome({
   const [pickTarget, setPickTarget] = useState<PickTarget | null>(null);
   const [trayOpen, setTrayOpen] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const usedCounts = useMemo(() => countPhotoUsage(bookDocument), [bookDocument]);
   const photosById = useMemo(
     () => Object.fromEntries(manager.photos.map((photo) => [photo.id, photo])),
     [manager.photos],
   );
+  const photoDims = useMemo(
+    () =>
+      Object.fromEntries(
+        manager.photos.map((photo) => [
+          photo.id,
+          { width: photo.width, height: photo.height },
+        ]),
+      ),
+    [manager.photos],
+  );
+  const issues = useMemo(
+    () => checkCompleteness(bookDocument, photoDims),
+    [bookDocument, photoDims],
+  );
+
+  const openPreview = useCallback(() => setPreviewOpen(true), []);
+  const closePreview = useCallback(() => setPreviewOpen(false), []);
+  const handleFixIssue = useFixIssue(closePreview);
+  const { bookIsEmpty, leftoverCount, handleAutoCreate } =
+    useAutoCreate(bookDocument);
 
   // Selecting a slot on mobile auto-opens the panel sheet (it is only
   // rendered <lg; both close paths clear the selection again, so the derived
@@ -173,10 +299,25 @@ function EditorChrome({
 
   return (
     <div className="flex h-dvh flex-col">
-      <EditorHeader initialPrice={initialPrice} saveStatus={status} />
+      {/* Everything behind the preview overlay goes inert while it's open —
+          aria-modal hides it from AT but not from the keyboard. display:
+          contents keeps the flex layout untouched. */}
+      <div inert={previewOpen} className="contents">
+      <EditorHeader
+        initialPrice={initialPrice}
+        saveStatus={status}
+        onOpenPreview={openPreview}
+        issueCount={issues.length}
+      />
       <div className="flex min-h-0 flex-1">
         <aside className="hidden w-72 shrink-0 overflow-y-auto border-r border-zinc-200 bg-zinc-50 p-3 lg:block">
-          <PhotoTray manager={manager} usedCounts={usedCounts} />
+          <PhotoTray
+            manager={manager}
+            usedCounts={usedCounts}
+            onAutoCreate={handleAutoCreate}
+            autoCreateBookIsEmpty={bookIsEmpty}
+            autoCreateLeftoverCount={leftoverCount}
+          />
         </aside>
         <main className="flex min-w-0 flex-1 flex-col">
           <div className="relative min-h-0 flex-1">
@@ -201,7 +342,13 @@ function EditorChrome({
         onOpenPanel={() => setPanelOpen(true)}
       />
       <MobileSheet open={trayOpen} title={en.tray.title} onClose={closeTray}>
-        <PhotoTray manager={manager} usedCounts={usedCounts} />
+        <PhotoTray
+          manager={manager}
+          usedCounts={usedCounts}
+          onAutoCreate={handleAutoCreate}
+          autoCreateBookIsEmpty={bookIsEmpty}
+          autoCreateLeftoverCount={leftoverCount}
+        />
       </MobileSheet>
       <MobileSheet
         open={panelSheetOpen}
@@ -221,6 +368,15 @@ function EditorChrome({
         onPick={handlePick}
         onClose={() => setPickTarget(null)}
       />
+      </div>
+      {previewOpen && (
+        <PreviewOverlay
+          document={bookDocument}
+          photosById={photosById}
+          onClose={closePreview}
+          onFixIssue={handleFixIssue}
+        />
+      )}
     </div>
   );
 }

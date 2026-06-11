@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { DEFAULT_CROP } from "@/lib/crop";
+import { distributePhotos, type DistributablePhoto } from "@/lib/distribute";
 import { createEmptyBookDocument } from "@/lib/new-book";
 import { spreadBounds } from "@/lib/print-specs";
 import { createEditorStore } from "@/stores/editor-store";
@@ -390,5 +391,127 @@ describe("cover selection side effects", () => {
       photoId: "c1",
       crop: DEFAULT_CROP,
     });
+  });
+});
+
+describe("autoCreate", () => {
+  // Five dated photos across two days, mixed orientations: day 1 chunks as a
+  // trio, day 2 as a duo, then padding spreads up to square_20's minimum.
+  const photos: DistributablePhoto[] = [
+    {
+      id: "d1",
+      width: 2000,
+      height: 1500,
+      capturedAt: new Date("2026-01-01T08:00:00Z"),
+    },
+    {
+      id: "d2",
+      width: 1500,
+      height: 2000,
+      capturedAt: new Date("2026-01-01T09:15:00Z"),
+    },
+    {
+      id: "d3",
+      width: 2400,
+      height: 1600,
+      capturedAt: new Date("2026-01-01T11:30:00Z"),
+    },
+    {
+      id: "d4",
+      width: 1600,
+      height: 2400,
+      capturedAt: new Date("2026-01-02T07:45:00Z"),
+    },
+    {
+      id: "d5",
+      width: 3000,
+      height: 2000,
+      capturedAt: new Date("2026-01-02T10:00:00Z"),
+    },
+  ];
+
+  it("replaces document.spreads with exactly distributePhotos' output (deep-equal)", () => {
+    const store = makeStore();
+
+    store.getState().autoCreate(photos);
+
+    expect(store.getState().document.spreads).toEqual(
+      distributePhotos(photos, "square_20").spreads,
+    );
+  });
+
+  it("creates exactly ONE history entry on top of prior edits", () => {
+    const store = makeStore();
+    store.getState().placePhoto(0, 0, "seed");
+    expect(store.temporal.getState().pastStates).toHaveLength(1);
+
+    store.getState().autoCreate(photos);
+
+    expect(store.temporal.getState().pastStates).toHaveLength(2);
+  });
+
+  it("resets selection to { view: 'spread', spreadIndex: 0, slotIndex: null }", () => {
+    const store = makeStore();
+    store.getState().selectSpread(7);
+    store.getState().selectSlot(1);
+    store.getState().selectCover();
+
+    store.getState().autoCreate(photos);
+
+    expect(store.getState().selection).toEqual({
+      view: "spread",
+      spreadIndex: 0,
+      slotIndex: null,
+    });
+  });
+
+  it("undo restores the previous document reference and spreads; redo reapplies the distribution", () => {
+    const store = makeStore();
+    store.getState().placePhoto(2, 1, "seed");
+    const docBefore = store.getState().document;
+
+    store.getState().autoCreate(photos);
+    const docAfter = store.getState().document;
+    expect(docAfter).not.toBe(docBefore);
+
+    store.temporal.getState().undo();
+    expect(store.getState().document).toBe(docBefore);
+    expect(store.getState().document.spreads).toBe(docBefore.spreads);
+    expect(asPhoto(slotAt(store.getState().document, 2, 1)).photoId).toBe(
+      "seed",
+    );
+
+    store.temporal.getState().redo();
+    expect(store.getState().document).toBe(docAfter);
+    expect(store.getState().document.spreads).toEqual(
+      distributePhotos(photos, "square_20").spreads,
+    );
+  });
+
+  it("autoCreate([]) after edits wipes spreads back to minSpreads empties with ONE history entry", () => {
+    const store = makeStore();
+    store.getState().placePhoto(0, 0, "seed");
+    expect(store.temporal.getState().pastStates).toHaveLength(1);
+
+    store.getState().autoCreate([]);
+
+    const { spreads } = store.getState().document;
+    expect(spreads).toHaveLength(spreadBounds("square_20").minSpreads);
+    expect(
+      spreads.every((s) => s.slots.every((slot) => slot.kind === "empty")),
+    ).toBe(true);
+    expect(store.temporal.getState().pastStates).toHaveLength(2);
+  });
+
+  it("autoCreate([]) on a pristine book is NOT a no-op: distribute deterministically rebuilds value-identical empty spreads but as a NEW array, and replaceSpreads only no-ops on the SAME reference — so ONE entry is recorded", () => {
+    const store = makeStore();
+    const before = store.getState().document;
+
+    store.getState().autoCreate([]);
+
+    const after = store.getState().document;
+    expect(after).not.toBe(before); // actual behavior: fresh document reference
+    expect(after.spreads).toEqual(before.spreads); // ...with value-identical spreads
+    expect(store.temporal.getState().pastStates).toHaveLength(1);
   });
 });

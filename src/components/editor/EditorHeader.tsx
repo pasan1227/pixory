@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, Redo2, Undo2 } from "lucide-react";
+import { ChevronLeft, Eye, Redo2, Undo2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { en } from "@/i18n/en";
@@ -115,6 +115,41 @@ function SaveIndicator({ status }: Readonly<{ status: AutosaveStatus }>) {
   );
 }
 
+// Entry point to the full-book preview overlay. Icon-only on mobile (the
+// aria-label carries the text), icon + label on sm+. The terracotta badge
+// surfaces the open completeness-issue count at a glance.
+function PreviewButton({
+  onOpenPreview,
+  issueCount,
+}: Readonly<{ onOpenPreview: () => void; issueCount: number }>) {
+  const label =
+    issueCount > 0
+      ? `${en.editor.preview.open} — ${en.editor.preview.issuesTitle.replace("{count}", String(issueCount))}`
+      : en.editor.preview.open;
+  return (
+    <button
+      type="button"
+      onClick={onOpenPreview}
+      aria-label={label}
+      title={label}
+      className="relative flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-md text-zinc-600 transition-colors duration-150 motion-reduce:transition-none hover:bg-zinc-200 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta sm:px-2"
+    >
+      <Eye className="size-5" aria-hidden="true" />
+      <span className="hidden text-sm font-medium sm:inline">
+        {en.editor.preview.open}
+      </span>
+      {issueCount > 0 && (
+        <span
+          aria-hidden="true"
+          className="absolute top-0.5 right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-terracotta px-1 text-[10px] leading-none font-semibold text-paper"
+        >
+          {issueCount}
+        </span>
+      )}
+    </button>
+  );
+}
+
 // Server-quoted price — the client NEVER recomputes. Re-quotes (debounced
 // 500ms) only when the page count changes; keeps the last good value on
 // failure.
@@ -166,7 +201,14 @@ function PriceChip({
 export function EditorHeader({
   initialPrice,
   saveStatus,
-}: Readonly<{ initialPrice: PriceBreakdown; saveStatus: AutosaveStatus }>) {
+  onOpenPreview,
+  issueCount,
+}: Readonly<{
+  initialPrice: PriceBreakdown;
+  saveStatus: AutosaveStatus;
+  onOpenPreview: () => void;
+  issueCount: number;
+}>) {
   const title = useEditorStore((s) => s.document.cover.title);
   return (
     <header className="flex h-14 shrink-0 items-center gap-1 border-b border-zinc-200 bg-zinc-50 px-2 sm:gap-3 sm:px-4">
@@ -182,6 +224,7 @@ export function EditorHeader({
       </h1>
       <SaveIndicator status={saveStatus} />
       <HistoryControls />
+      <PreviewButton onOpenPreview={onOpenPreview} issueCount={issueCount} />
       <PriceChip initialPrice={initialPrice} />
     </header>
   );

@@ -101,6 +101,10 @@ locales · automated print-PDF generation.
    6 layouts, cover photos w/ pan-zoom), marketing-grade /create picker
    with live preview, /my-books (thumbnails, copy-once resume links,
    two-step delete), crawler-safe /resume confirmation flow
-5. ⬜ Auto-create, preview mode, completeness checks
+5. ✅ Auto-create ("Fill my book" — chronological, one undo entry,
+   two-step confirm on filled books, leftover notice), full-screen preview
+   with framer page-turn (lazy chunk, reduced-motion aware) and a
+   completeness checklist (jump/fix), checkCompleteness lib feeding the
+   M6 checkout gate
 6. ⬜ Checkout, orders, snapshotting, admin
 7. ⬜ Marketing site, SEO, polish

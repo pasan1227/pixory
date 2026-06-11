@@ -12,12 +12,14 @@ import {
   updateCoverStyle as updateCoverStyleOp,
   type CoverStylePatch,
 } from "@/lib/cover-ops";
+import { distributePhotos, type DistributablePhoto } from "@/lib/distribute";
 import {
   addSpreadAfter as addSpreadAfterOp,
   clearSlot as clearSlotOp,
   moveSpread as moveSpreadOp,
   placePhoto as placePhotoOp,
   removeSpread as removeSpreadOp,
+  replaceSpreads as replaceSpreadsOp,
   setSlotCrop as setSlotCropOp,
   setSlotText as setSlotTextOp,
   switchSpreadLayout as switchSpreadLayoutOp,
@@ -73,6 +75,9 @@ export interface EditorState {
   addSpreadAfter(index: number): void;
   removeSpread(index: number): void;
   moveSpread(fromIndex: number, toIndex: number): void;
+  // Auto-create: distribute photos chronologically across fresh spreads,
+  // replacing the current spread list. ONE history entry — fully undoable.
+  autoCreate(photos: DistributablePhoto[]): void;
 }
 
 const HISTORY_LIMIT = 50;
@@ -85,12 +90,13 @@ export function createEditorStore(initialDocument: BookDocument) {
   return createStore<EditorState>()(
     temporal(
       immer((set, get) => {
-        // Apply a pure document op; returns true when the document changed.
+        // Apply a pure document op; a no-op (same reference) skips set()
+        // entirely so no history entry is recorded.
         const apply = (
           next: BookDocument,
           alsoSelect?: (selection: EditorSelection) => void,
-        ): boolean => {
-          if (next === get().document) return false;
+        ): void => {
+          if (next === get().document) return;
           set((state) => {
             state.document = next;
             if (alsoSelect) alsoSelect(state.selection);
@@ -99,7 +105,6 @@ export function createEditorStore(initialDocument: BookDocument) {
               next.spreads.length,
             );
           });
-          return true;
         };
 
         return {
@@ -128,10 +133,10 @@ export function createEditorStore(initialDocument: BookDocument) {
             }),
 
           updateCoverStyle: (patch) =>
-            void apply(updateCoverStyleOp(get().document, patch)),
+            apply(updateCoverStyleOp(get().document, patch)),
 
           switchCoverLayout: (layoutId) =>
-            void apply(
+            apply(
               switchCoverLayoutOp(get().document, layoutId),
               (selection) => {
                 selection.slotIndex = null;
@@ -139,34 +144,34 @@ export function createEditorStore(initialDocument: BookDocument) {
             ),
 
           placeCoverPhoto: (slotIndex, photoId) =>
-            void apply(placeCoverPhotoOp(get().document, slotIndex, photoId)),
+            apply(placeCoverPhotoOp(get().document, slotIndex, photoId)),
 
           setCoverCrop: (slotIndex, crop) =>
-            void apply(setCoverCropOp(get().document, slotIndex, crop)),
+            apply(setCoverCropOp(get().document, slotIndex, crop)),
 
           clearCoverSlot: (slotIndex) =>
-            void apply(clearCoverSlotOp(get().document, slotIndex)),
+            apply(clearCoverSlotOp(get().document, slotIndex)),
 
           placePhoto: (spreadIndex, slotIndex, photoId) =>
-            void apply(
+            apply(
               placePhotoOp(get().document, spreadIndex, slotIndex, photoId),
             ),
 
           setCrop: (spreadIndex, slotIndex, crop) =>
-            void apply(
+            apply(
               setSlotCropOp(get().document, spreadIndex, slotIndex, crop),
             ),
 
           setText: (spreadIndex, slotIndex, input) =>
-            void apply(
+            apply(
               setSlotTextOp(get().document, spreadIndex, slotIndex, input),
             ),
 
           clearSlot: (spreadIndex, slotIndex) =>
-            void apply(clearSlotOp(get().document, spreadIndex, slotIndex)),
+            apply(clearSlotOp(get().document, spreadIndex, slotIndex)),
 
           switchLayout: (spreadIndex, layoutId) =>
-            void apply(
+            apply(
               switchSpreadLayoutOp(get().document, spreadIndex, layoutId),
               // The new layout may have fewer slots than the selected index.
               (selection) => {
@@ -175,7 +180,7 @@ export function createEditorStore(initialDocument: BookDocument) {
             ),
 
           addSpreadAfter: (index) =>
-            void apply(
+            apply(
               addSpreadAfterOp(get().document, index, crypto.randomUUID()),
               (selection) => {
                 selection.spreadIndex = index + 1;
@@ -184,12 +189,12 @@ export function createEditorStore(initialDocument: BookDocument) {
             ),
 
           removeSpread: (index) =>
-            void apply(removeSpreadOp(get().document, index), (selection) => {
+            apply(removeSpreadOp(get().document, index), (selection) => {
               selection.slotIndex = null;
             }),
 
           moveSpread: (fromIndex, toIndex) =>
-            void apply(
+            apply(
               moveSpreadOp(get().document, fromIndex, toIndex),
               (selection) => {
                 // Keep the selection on the spread the user was editing.
@@ -198,6 +203,16 @@ export function createEditorStore(initialDocument: BookDocument) {
                 }
               },
             ),
+
+          autoCreate: (photos) => {
+            const doc = get().document;
+            const { spreads } = distributePhotos(photos, doc.format);
+            apply(replaceSpreadsOp(doc, spreads), (selection) => {
+              selection.view = "spread";
+              selection.spreadIndex = 0;
+              selection.slotIndex = null;
+            });
+          },
         };
       }),
       {

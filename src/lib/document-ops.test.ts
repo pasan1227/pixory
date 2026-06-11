@@ -7,6 +7,7 @@ import {
   moveSpread,
   placePhoto,
   removeSpread,
+  replaceSpreads,
   setSlotCrop,
   setSlotText,
   switchSpreadLayout,
@@ -403,6 +404,66 @@ describe("moveSpread", () => {
     expect(moveSpread(doc, 2, -1)).toBe(doc);
     expect(moveSpread(doc, doc.spreads.length, 0)).toBe(doc);
     expect(moveSpread(doc, 0, doc.spreads.length)).toBe(doc);
+  });
+});
+
+// --- replaceSpreads ------------------------------------------------------------------
+
+describe("replaceSpreads", () => {
+  function freshSpreads(): BookDocument["spreads"] {
+    return [
+      {
+        id: "auto-1",
+        layoutId: "spread-full",
+        slots: [
+          { kind: "photo", photoId: "a", crop: { x: 0.5, y: 0.5, scale: 1 } },
+        ],
+      },
+      {
+        id: "auto-2",
+        layoutId: "spread-duo",
+        slots: [
+          { kind: "photo", photoId: "b", crop: { x: 0.2, y: 0.8, scale: 1.5 } },
+          { kind: "empty" },
+        ],
+      },
+    ];
+  }
+
+  it("replaces the whole spread list and the result parses with bookDocumentSchema", () => {
+    const doc = makeDoc();
+    const spreads = freshSpreads();
+
+    const next = replaceSpreads(doc, spreads);
+
+    expect(next).not.toBe(doc);
+    expect(next.spreads).toEqual(spreads);
+    expect(spreadIds(next)).toEqual(["auto-1", "auto-2"]);
+    expect(() => bookDocumentSchema.parse(next)).not.toThrow();
+  });
+
+  it("an empty array is rejected: SAME reference", () => {
+    const doc = makeDoc();
+    expect(replaceSpreads(doc, [])).toBe(doc);
+  });
+
+  it("passing the document's own spreads array is a no-op: SAME reference", () => {
+    const doc = makeDoc();
+    expect(replaceSpreads(doc, doc.spreads)).toBe(doc);
+  });
+
+  it("never mutates the input document or the replacement array (deep-frozen fixtures)", () => {
+    const doc = makeDoc();
+    const spreads = freshSpreads();
+    const docSnapshot = structuredClone(doc);
+    const spreadsSnapshot = structuredClone(spreads);
+    deepFreeze(doc);
+    deepFreeze(spreads);
+
+    expect(() => replaceSpreads(doc, spreads)).not.toThrow();
+
+    expect(doc).toEqual(docSnapshot);
+    expect(spreads).toEqual(spreadsSnapshot);
   });
 });
 
