@@ -31,4 +31,24 @@ export const BOOK_FONTS: Record<BookFontId, BookFont> = {
     cssVariable: "--font-book-caveat",
     fallback: "cursive",
   },
+  playfair: {
+    id: "playfair",
+    cssVariable: "--font-book-playfair",
+    fallback: "Georgia, serif",
+  },
+  spaceGrotesk: {
+    id: "spaceGrotesk",
+    cssVariable: "--font-book-space-grotesk",
+    fallback: "system-ui, sans-serif",
+  },
+  bebas: {
+    id: "bebas",
+    cssVariable: "--font-book-bebas",
+    fallback: "Impact, sans-serif",
+  },
+  pacifico: {
+    id: "pacifico",
+    cssVariable: "--font-book-pacifico",
+    fallback: "cursive",
+  },
 };

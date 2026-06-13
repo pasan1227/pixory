@@ -9,7 +9,8 @@ import "./globals.css";
 const fraunces = Fraunces({
   variable: "--font-fraunces",
   subsets: ["latin"],
-  weight: ["400", "600"],
+  // 700 backs bold cover titles; Inter is variable so it covers bold already.
+  weight: ["400", "600", "700"],
 });
 
 const inter = Inter({

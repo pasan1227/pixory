@@ -15,11 +15,25 @@ export const BOOK_FORMATS = ["square_20", "square_26", "landscape_a4"] as const;
 export const bookFormatSchema = z.enum(BOOK_FORMATS);
 
 // Curated in-book typography — the whole set. Display metadata lives in
-// src/data/book-fonts.ts keyed by these ids.
-export const BOOK_FONT_IDS = ["fraunces", "inter", "lora", "caveat"] as const;
+// src/data/book-fonts.ts keyed by these ids. Widening this list is additive
+// (existing documents keep their fontId); load the new face in the (editor)
+// and create layouts, add BOOK_FONTS metadata and an en.fonts label.
+export const BOOK_FONT_IDS = [
+  "fraunces",
+  "inter",
+  "lora",
+  "caveat",
+  "playfair",
+  "spaceGrotesk",
+  "bebas",
+  "pacifico",
+] as const;
 export const bookFontIdSchema = z.enum(BOOK_FONT_IDS);
 
 // Curated cover colors — display metadata in src/data/cover-colors.ts.
+// Widening this list is additive: existing documents reference existing ids and
+// stay valid, so it needs no schemaVersion bump or migration. Keep the three
+// derived maps in sync — COVER_COLORS, en.coverColors — or the build breaks.
 export const COVER_COLOR_IDS = [
   "terracotta",
   "sage",
@@ -29,11 +43,29 @@ export const COVER_COLOR_IDS = [
   "ocean",
   "blush",
   "butter",
+  "forest",
+  "wine",
+  "lavender",
+  "mist",
+  "gingham-sage",
+  "gingham-blush",
+  "stripe-ocean",
+  "stripe-terracotta",
+  "weave-forest",
+  "weave-wine",
 ] as const;
 export const coverColorIdSchema = z.enum(COVER_COLOR_IDS);
 
 export const TEXT_ALIGNMENTS = ["left", "center", "right"] as const;
 export const textAlignSchema = z.enum(TEXT_ALIGNMENTS);
+
+// Whole-field text emphasis for cover title/subtitle. Each flag is independent;
+// absent (undefined) means no emphasis at all.
+export const coverTextStyleSchema = z.object({
+  bold: z.boolean().default(false),
+  italic: z.boolean().default(false),
+  underline: z.boolean().default(false),
+});
 
 // Zoom is a multiplier on top of cover-fit; 1 = photo exactly fills the slot.
 export const MAX_CROP_SCALE = 3;
@@ -88,7 +120,9 @@ export const coverSlotSchema = z.discriminatedUnion("kind", [
 export const coverSchema = z.object({
   layoutId: z.string().min(1),
   title: z.string(),
+  titleStyle: coverTextStyleSchema.optional(),
   subtitle: z.string().optional(),
+  subtitleStyle: coverTextStyleSchema.optional(),
   spineText: z.string().optional(),
   colorId: coverColorIdSchema,
   fontId: bookFontIdSchema,
@@ -96,7 +130,7 @@ export const coverSchema = z.object({
 });
 
 export const bookDocumentSchema = z.object({
-  schemaVersion: z.literal(1),
+  schemaVersion: z.literal(2),
   format: bookFormatSchema,
   cover: coverSchema,
   spreads: z.array(spreadSchema),

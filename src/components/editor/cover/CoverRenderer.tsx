@@ -86,6 +86,8 @@ export function CoverRenderer({
         style={{
           aspectRatio: spec.pageWidthMm / spec.pageHeightMm,
           backgroundColor: color.hex,
+          // A patterned cover paints its CSS layers over the base colour.
+          ...color.pattern,
           containerType: "size",
         }}
       >

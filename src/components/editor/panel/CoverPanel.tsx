@@ -7,8 +7,18 @@ import { en } from "@/i18n/en";
 import { PAGES_PER_SPREAD, PRINT_SPECS } from "@/lib/print-specs";
 import { BOOK_FONT_IDS, COVER_COLOR_IDS } from "@/lib/schemas/book";
 import { useEditorStore } from "@/stores/editor-store";
-import type { BookFontId, BookFormat, CoverColorId } from "@/types/book";
+import type {
+  BookFontId,
+  BookFormat,
+  CoverColorId,
+  CoverTextStyle,
+} from "@/types/book";
 import type { CoverBox } from "@/types/layout";
+
+// All-false emphasis is collapsed to undefined so the document stays clean.
+function styleOrUndefined(style: CoverTextStyle): CoverTextStyle | undefined {
+  return style.bold || style.italic || style.underline ? style : undefined;
+}
 
 // en.coverLayouts is keyed by the layout ids in src/data/layouts.ts; widening
 // to a string index lets us label dynamically without duplicating the id list.
@@ -43,6 +53,58 @@ function CoverField({
       />
       {hint && <span className="font-normal text-zinc-500">{hint}</span>}
     </label>
+  );
+}
+
+function StyleToggleGroup({
+  value,
+  onChange,
+}: Readonly<{
+  value?: CoverTextStyle;
+  onChange: (style: CoverTextStyle) => void;
+}>) {
+  const bold = value?.bold ?? false;
+  const italic = value?.italic ?? false;
+  const underline = value?.underline ?? false;
+  const toggleClass = (active: boolean, face: string) =>
+    `min-h-11 min-w-11 rounded-md px-3 text-base ${face} transition-shadow duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta ${
+      active
+        ? "bg-terracotta text-paper ring-2 ring-terracotta"
+        : "bg-white text-ink ring-1 ring-zinc-200 hover:ring-zinc-400"
+    }`;
+  return (
+    <div role="group" className="flex gap-1.5">
+      <button
+        type="button"
+        aria-label={en.textStyle.bold}
+        title={en.textStyle.bold}
+        aria-pressed={bold}
+        onClick={() => onChange({ bold: !bold, italic, underline })}
+        className={toggleClass(bold, "font-bold")}
+      >
+        B
+      </button>
+      <button
+        type="button"
+        aria-label={en.textStyle.italic}
+        title={en.textStyle.italic}
+        aria-pressed={italic}
+        onClick={() => onChange({ bold, italic: !italic, underline })}
+        className={toggleClass(italic, "italic")}
+      >
+        I
+      </button>
+      <button
+        type="button"
+        aria-label={en.textStyle.underline}
+        title={en.textStyle.underline}
+        aria-pressed={underline}
+        onClick={() => onChange({ bold, italic, underline: !underline })}
+        className={toggleClass(underline, "underline")}
+      >
+        U
+      </button>
+    </div>
   );
 }
 
@@ -109,7 +171,11 @@ function ColorPicker({
                 aria-hidden="true"
                 // Cover color hexes are book content (printed cover stock),
                 // not UI chrome — inline style is the sanctioned path.
-                style={{ backgroundColor: COVER_COLORS[id].hex }}
+                // Patterned finishes preview over the base colour.
+                style={{
+                  backgroundColor: COVER_COLORS[id].hex,
+                  ...COVER_COLORS[id].pattern,
+                }}
                 className={`block size-8 rounded-full border border-ink/10 ${
                   active ? "ring-2 ring-terracotta ring-offset-2" : ""
                 }`}
@@ -212,11 +278,23 @@ export function CoverPanel() {
         placeholder={en.editor.cover.titlePlaceholder}
         onChange={(title) => updateCoverStyle({ title })}
       />
+      <StyleToggleGroup
+        value={cover.titleStyle}
+        onChange={(style) =>
+          updateCoverStyle({ titleStyle: styleOrUndefined(style) })
+        }
+      />
       <CoverField
         label={en.editor.cover.subtitle}
         value={cover.subtitle ?? ""}
         placeholder={en.editor.cover.subtitlePlaceholder}
         onChange={(subtitle) => updateCoverStyle({ subtitle })}
+      />
+      <StyleToggleGroup
+        value={cover.subtitleStyle}
+        onChange={(style) =>
+          updateCoverStyle({ subtitleStyle: styleOrUndefined(style) })
+        }
       />
       {spineTextAvailable && (
         <CoverField

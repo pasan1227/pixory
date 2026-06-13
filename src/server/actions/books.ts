@@ -2,12 +2,19 @@
 
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { COVER_LAYOUTS } from "@/data/layouts";
 import { DISTRICT_IDS } from "@/data/districts";
 import { priceBook, type PriceBreakdown } from "@/lib/pricing";
-import { bookDocumentSchema, bookFormatSchema } from "@/lib/schemas/book";
+import {
+  bookDocumentSchema,
+  bookFontIdSchema,
+  bookFormatSchema,
+  coverColorIdSchema,
+} from "@/lib/schemas/book";
 import { createEmptyBookDocument } from "@/lib/new-book";
-import { updateCoverStyle } from "@/lib/cover-ops";
-import { switchCoverLayout } from "@/lib/cover-ops";
+import { switchCoverLayout, updateCoverStyle } from "@/lib/cover-ops";
+import type { CoverStylePatch } from "@/lib/cover-ops";
+import type { BookDocument, CoverTextStyle } from "@/types/book";
 import {
   createBook,
   deleteBook,
@@ -15,20 +22,57 @@ import {
 } from "@/server/repositories/books";
 import { getStorage } from "@/server/storage";
 import { ensureSessionToken, getSessionToken } from "@/server/session";
-import {
-  coverColorIdSchema,
-} from "@/lib/schemas/book";
-import { COVER_LAYOUTS } from "@/data/layouts";
 
 const coverLayoutIdSchema = z
   .string()
   .refine((id) => COVER_LAYOUTS.some((layout) => layout.id === id));
 
+// Compact whole-field emphasis flags, e.g. "bu" = bold+underline.
+const styleFlagSchema = z.string().regex(/^[biu]*$/).optional();
+
 const createBookInputSchema = z.object({
   format: bookFormatSchema,
   coverLayout: coverLayoutIdSchema.optional(),
   coverColor: coverColorIdSchema.optional(),
+  coverFont: bookFontIdSchema.optional(),
+  coverTitle: z.string().trim().max(120).optional(),
+  coverSubtitle: z.string().trim().max(160).optional(),
+  titleStyleFlag: styleFlagSchema,
+  subtitleStyleFlag: styleFlagSchema,
 });
+
+type CreateBookInput = z.infer<typeof createBookInputSchema>;
+
+// Decode a flag string into a style, or undefined when nothing is set.
+function parseStyleFlag(flag: string | undefined): CoverTextStyle | undefined {
+  if (!flag) return undefined;
+  const style = {
+    bold: flag.includes("b"),
+    italic: flag.includes("i"),
+    underline: flag.includes("u"),
+  };
+  return style.bold || style.italic || style.underline ? style : undefined;
+}
+
+// Builds the starting document from the create-flow choices using only pure
+// document ops. updateCoverStyle is a no-op when the patch is empty, so an
+// untouched field never forces a write.
+function buildCreatedDocument(input: CreateBookInput): BookDocument {
+  let document = createEmptyBookDocument(input.format);
+  if (input.coverLayout) {
+    document = switchCoverLayout(document, input.coverLayout);
+  }
+  const patch: CoverStylePatch = {};
+  if (input.coverColor) patch.colorId = input.coverColor;
+  if (input.coverFont) patch.fontId = input.coverFont;
+  if (input.coverTitle) patch.title = input.coverTitle;
+  if (input.coverSubtitle) patch.subtitle = input.coverSubtitle;
+  const titleStyle = parseStyleFlag(input.titleStyleFlag);
+  if (titleStyle) patch.titleStyle = titleStyle;
+  const subtitleStyle = parseStyleFlag(input.subtitleStyleFlag);
+  if (subtitleStyle) patch.subtitleStyle = subtitleStyle;
+  return updateCoverStyle(document, patch);
+}
 
 // Creates an empty book under the caller's (possibly freshly minted)
 // anonymous session and lands them in the editor.
@@ -37,19 +81,17 @@ export async function createBookAction(formData: FormData): Promise<void> {
     format: formData.get("format"),
     coverLayout: formData.get("coverLayout") ?? undefined,
     coverColor: formData.get("coverColor") ?? undefined,
+    coverFont: formData.get("coverFont") ?? undefined,
+    coverTitle: formData.get("coverTitle") ?? undefined,
+    coverSubtitle: formData.get("coverSubtitle") ?? undefined,
+    titleStyleFlag: formData.get("titleStyleFlag") ?? undefined,
+    subtitleStyleFlag: formData.get("subtitleStyleFlag") ?? undefined,
   });
   if (!parsed.success) {
     redirect("/create");
   }
   const sessionToken = await ensureSessionToken();
-  let document = createEmptyBookDocument(parsed.data.format);
-  if (parsed.data.coverLayout) {
-    document = switchCoverLayout(document, parsed.data.coverLayout);
-  }
-  if (parsed.data.coverColor) {
-    document = updateCoverStyle(document, { colorId: parsed.data.coverColor });
-  }
-  const book = await createBook(sessionToken, document);
+  const book = await createBook(sessionToken, buildCreatedDocument(parsed.data));
   redirect(`/editor/${book.id}`);
 }
 

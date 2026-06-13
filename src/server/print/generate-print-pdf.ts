@@ -15,7 +15,10 @@
 //   (full-bleed slots extend into bleed; framed slots do not), no slot may
 //   shift relative to its normalized rect.
 // - Color: export sRGB; the print house performs CMYK conversion with their
-//   ICC profile. Embed fonts (the four curated families) subset.
+//   ICC profile. Embed fonts (the four curated families) subset. The cover
+//   background is COVER_COLORS[colorId] — its solid `hex` plus any CSS
+//   `pattern` (gingham/stripes/weave); a Chromium render reproduces the
+//   pattern exactly, a pdf-lib path must rasterize it.
 // - Likely tooling: pdf-lib or a headless-Chromium render of the existing
 //   SpreadRenderer at print scale; decide when this ships.
 // ---------------------------------------------------------------------------
