@@ -8,12 +8,17 @@ import type { BookDocument } from "@/types/book";
 // mutated silently.
 // ---------------------------------------------------------------------------
 
-export const CURRENT_SCHEMA_VERSION = 1;
+export const CURRENT_SCHEMA_VERSION = 2;
 
 type MigrationStep = (doc: Record<string, unknown>) => Record<string, unknown>;
 
-// Keyed by the version the step migrates FROM. Empty while v1 is current.
-const MIGRATIONS: Record<number, MigrationStep> = {};
+// Keyed by the version the step migrates FROM.
+const MIGRATIONS: Record<number, MigrationStep> = {
+  // v1 -> v2: cover gained optional titleStyle/subtitleStyle (bold/italic/
+  // underline). Existing documents simply have none, so the lift is a version
+  // bump — the optional fields stay absent and render without emphasis.
+  1: (doc) => ({ ...doc, schemaVersion: 2 }),
+};
 
 function versionOf(raw: Record<string, unknown>): number {
   const version = raw["schemaVersion"];

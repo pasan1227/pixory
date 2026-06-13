@@ -149,6 +149,47 @@ export const COVER_LAYOUTS: CoverLayout[] = [
     titleBox: { x: 0.1, y: 0.55, w: 0.8, h: 0.1 },
     subtitleBox: { x: 0.15, y: 0.66, w: 0.7, h: 0.06 },
   },
+  // One photo filling the upper cover, title and subtitle on the colour below —
+  // a clean horizon split.
+  {
+    id: "cover-horizon",
+    photoSlots: [{ x: 0, y: 0, w: 1, h: 0.6 }],
+    titleBox: { x: 0.1, y: 0.68, w: 0.8, h: 0.11 },
+    subtitleBox: { x: 0.15, y: 0.81, w: 0.7, h: 0.07 },
+  },
+  // Two framed photos stacked one above the other, title beneath.
+  {
+    id: "cover-stack",
+    photoSlots: [
+      { x: 0.12, y: 0.08, w: 0.76, h: 0.3 },
+      { x: 0.12, y: 0.42, w: 0.76, h: 0.3 },
+    ],
+    titleBox: { x: 0.1, y: 0.76, w: 0.8, h: 0.1 },
+    subtitleBox: { x: 0.15, y: 0.87, w: 0.7, h: 0.06 },
+  },
+  // Three small photos in a row near the top, title beneath.
+  {
+    id: "cover-trio",
+    photoSlots: [
+      { x: 0.08, y: 0.18, w: 0.26, h: 0.34 },
+      { x: 0.37, y: 0.18, w: 0.26, h: 0.34 },
+      { x: 0.66, y: 0.18, w: 0.26, h: 0.34 },
+    ],
+    titleBox: { x: 0.1, y: 0.62, w: 0.8, h: 0.11 },
+    subtitleBox: { x: 0.15, y: 0.74, w: 0.7, h: 0.07 },
+  },
+  // Four photos in a 2×2 grid (reading order), title beneath.
+  {
+    id: "cover-grid",
+    photoSlots: [
+      { x: 0.1, y: 0.1, w: 0.38, h: 0.26 },
+      { x: 0.52, y: 0.1, w: 0.38, h: 0.26 },
+      { x: 0.1, y: 0.4, w: 0.38, h: 0.26 },
+      { x: 0.52, y: 0.4, w: 0.38, h: 0.26 },
+    ],
+    titleBox: { x: 0.1, y: 0.72, w: 0.8, h: 0.1 },
+    subtitleBox: { x: 0.15, y: 0.83, w: 0.7, h: 0.06 },
+  },
 ];
 
 export const DEFAULT_SPREAD_LAYOUT_ID = "spread-duo";

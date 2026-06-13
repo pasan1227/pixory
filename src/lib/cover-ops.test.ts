@@ -115,6 +115,36 @@ describe("updateCoverStyle", () => {
     expect(doc.cover.title).toBe("");
     expect(doc.cover.colorId).toBe("terracotta");
   });
+
+  it("sets titleStyle and subtitleStyle independently", () => {
+    const doc = deepFreeze(makeDoc());
+    expect(
+      updateCoverStyle(doc, {
+        titleStyle: { bold: true, italic: false, underline: true },
+      }).cover.titleStyle,
+    ).toEqual({ bold: true, italic: false, underline: true });
+    expect(
+      updateCoverStyle(doc, {
+        subtitleStyle: { bold: false, italic: true, underline: false },
+      }).cover.subtitleStyle,
+    ).toEqual({ bold: false, italic: true, underline: false });
+  });
+
+  it("clears a style by patching it to undefined", () => {
+    const styled = deepFreeze(
+      updateCoverStyle(makeDoc(), {
+        titleStyle: { bold: true, italic: true, underline: false },
+      }),
+    );
+    const cleared = updateCoverStyle(styled, { titleStyle: undefined });
+    expect(cleared).not.toBe(styled);
+    expect(cleared.cover.titleStyle).toBeUndefined();
+  });
+
+  it("is a no-op when clearing an already-absent style", () => {
+    const doc = deepFreeze(makeDoc());
+    expect(updateCoverStyle(doc, { titleStyle: undefined })).toBe(doc);
+  });
 });
 
 describe("switchCoverLayout", () => {

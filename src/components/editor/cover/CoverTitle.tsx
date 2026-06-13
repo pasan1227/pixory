@@ -2,7 +2,7 @@
 
 import { memo } from "react";
 import { en } from "@/i18n/en";
-import type { BookCover } from "@/types/book";
+import type { BookCover, CoverTextStyle } from "@/types/book";
 import type { CoverBox, CoverLayout } from "@/types/layout";
 
 // Title / subtitle text positioned by a page-normalized cover box. Not
@@ -18,6 +18,8 @@ type CoverTitleProps = Readonly<{
   sizeCqh: number;
   colorHex: string;
   fontFamily: string;
+  // Whole-field emphasis; absent = no emphasis.
+  emphasis?: CoverTextStyle;
   // Placeholder rendering (empty title in interactive mode) dims to 50%.
   dimmed?: boolean;
 }>;
@@ -28,6 +30,7 @@ function CoverTitleImpl({
   sizeCqh,
   colorHex,
   fontFamily,
+  emphasis,
   dimmed = false,
 }: CoverTitleProps) {
   return (
@@ -49,6 +52,9 @@ function CoverTitleImpl({
           fontFamily,
           fontSize: `${sizeCqh}cqh`,
           lineHeight: 1.1,
+          fontWeight: emphasis?.bold ? 700 : undefined,
+          fontStyle: emphasis?.italic ? "italic" : undefined,
+          textDecoration: emphasis?.underline ? "underline" : undefined,
         }}
       >
         {text}
@@ -92,6 +98,7 @@ export function CoverTextLayer({
           sizeCqh={layout.titleBox.h * TITLE_SIZE_FACTOR}
           colorHex={colorHex}
           fontFamily={fontFamily}
+          emphasis={cover.titleStyle}
           dimmed={titlePlaceholder}
         />
       )}
@@ -102,6 +109,7 @@ export function CoverTextLayer({
           sizeCqh={layout.subtitleBox.h * SUBTITLE_SIZE_FACTOR}
           colorHex={colorHex}
           fontFamily={fontFamily}
+          emphasis={cover.subtitleStyle}
         />
       )}
     </>

@@ -8,11 +8,12 @@ import {
 } from "next/font/google";
 import type { CSSProperties, ReactNode } from "react";
 
-// The curated in-book fonts load ONLY here — marketing routes never pay for
-// them. Fraunces and Inter are already loaded globally; their --font-book-*
-// variables alias the root variables instead of loading second copies. The
-// 700 weights back bold cover titles (Bebas/Pacifico ship 400 only — bold is
-// synthesised, which is fine for a display/script face).
+// The create flow shows a live cover preview with a font picker, so it needs
+// the curated in-book fonts. Loading them is scoped to /create only — other
+// marketing routes never pay for them, and no editor JS (stores, exifr, dnd)
+// crosses into this route. Fraunces and Inter are already loaded globally;
+// their --font-book-* variables alias the root variables instead of loading a
+// second copy, mirroring the (editor) layout. The 700 weights back bold titles.
 const lora = Lora({
   variable: "--font-book-lora",
   subsets: ["latin"],
@@ -56,14 +57,14 @@ const bookFontAliases: CSSProperties = {
   ["--font-book-inter" as string]: "var(--font-inter)",
 };
 
-// Editor route group layout — cool zinc chrome so the book page (white/paper)
-// is always the warmest thing on screen.
-export default function EditorLayout({
+// display:contents keeps <main>'s flex chain intact (no extra box) while still
+// cascading the font CSS variables to the preview below.
+export default function CreateLayout({
   children,
 }: Readonly<{ children: ReactNode }>) {
   return (
     <div
-      className={`${bookFontClasses} flex min-h-dvh flex-col bg-zinc-100`}
+      className={`${bookFontClasses} contents`}
       style={bookFontAliases}
     >
       {children}

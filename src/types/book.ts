@@ -6,6 +6,7 @@ import type {
   coverColorIdSchema,
   coverSchema,
   coverSlotSchema,
+  coverTextStyleSchema,
   cropSchema,
   emptySlotSchema,
   photoPlacementSchema,
@@ -22,6 +23,7 @@ export type BookFormat = z.infer<typeof bookFormatSchema>;
 export type BookFontId = z.infer<typeof bookFontIdSchema>;
 export type CoverColorId = z.infer<typeof coverColorIdSchema>;
 export type TextAlign = z.infer<typeof textAlignSchema>;
+export type CoverTextStyle = z.infer<typeof coverTextStyleSchema>;
 export type Crop = z.infer<typeof cropSchema>;
 export type PhotoPlacement = z.infer<typeof photoPlacementSchema>;
 export type TextContent = z.infer<typeof textContentSchema>;

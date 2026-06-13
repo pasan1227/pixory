@@ -10,12 +10,23 @@ import type { BookCover, BookDocument, CoverSlot, Crop } from "@/types/book";
 // ---------------------------------------------------------------------------
 
 export type CoverStylePatch = Partial<
-  Pick<BookCover, "title" | "subtitle" | "spineText" | "colorId" | "fontId">
+  Pick<
+    BookCover,
+    | "title"
+    | "titleStyle"
+    | "subtitle"
+    | "subtitleStyle"
+    | "spineText"
+    | "colorId"
+    | "fontId"
+  >
 >;
 
 const STYLE_KEYS = [
   "title",
+  "titleStyle",
   "subtitle",
+  "subtitleStyle",
   "spineText",
   "colorId",
   "fontId",
